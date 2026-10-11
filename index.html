@@ -111,6 +111,7 @@ td{padding:6px 3px}
 .ghr{display:flex;align-items:center;gap:6px;flex:none}
 .ghost.all{font-size:12.5px;padding:3px 10px;font-weight:500}
 .nb{display:inline-block}
+textarea{resize:none;overflow:hidden}
 textarea.memo{min-height:84px;margin-top:0}
 .olist{list-style:none;padding:0;margin:8px 2px 0;font-size:13px;color:var(--muted);display:grid;gap:3px}
 .olist b{color:var(--fg)}
@@ -467,9 +468,10 @@ function coldCell(n,i){
   const p=i===0?coldHint(n):"";
   return `<td><input inputmode="numeric" id="cold-${n}-${i}" data-g="cold" data-n="${n}" data-i="${i}" value="${v}" aria-label="${n}"><span class="prev">${p}</span></td>`;
 }
-$("memo").addEventListener("input",e=>{state.memo=e.target.value;out();queueSave()});
+$("memo").addEventListener("input",e=>{autoGrow(e.target);state.memo=e.target.value;out();queueSave()});
 function renderInv(){
   if(document.activeElement!==$("memo"))$("memo").value=state.memo||"";
+  requestAnimationFrame(()=>autoGrow($("memo")));
   JUICE.forEach(syncToday);
   $("juice").innerHTML=JUICE.map(juiceRow).join("");
   $("cold").innerHTML=COLD.map(n=>`<tr data-row="${n}"><td>${n}</td>${[0,1].map(i=>coldCell(n,i)).join("")}</tr>`).join("");
@@ -508,6 +510,8 @@ $("p-inv").addEventListener("input",e=>{
 });
 // 清空被修正的格子時，回到自動數字
 $("p-inv").addEventListener("change",e=>{const t=e.target;if(t.dataset.g==="juice"&&(t.dataset.f==="base"||t.dataset.f==="today")&&t.value===""){renderInv()}});
+// 文字框自動長高，不用手動拉
+function autoGrow(t){if(!t)return;t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"}
 function out(){
   const f=a=>a===undefined||a===""?"0":a;
   let s=`‼️每日店內物料盤點\n日期：${(()=>{const v=$("date").value,d=new Date(v+"T00:00");return `${+v.slice(5,7)}/${+v.slice(8,10)} (${"日一二三四五六"[d.getDay()]})`})()}\n填表人：${[state.filler,state.helpers].filter(Boolean).join("、")}\n\n1.原汁（今日庫存/退冰使用/進貨）\n`;
@@ -523,12 +527,13 @@ function out(){
   const chk=undone.length?`離峰檢查 ${all.length-undone.length}/${all.length}，未完成：\n${undone.map(x=>"⚠️ "+x).join("\n")}`:`離峰檢查 ${all.length}/${all.length} 全部完成 ✅`;
   s=s.replace("\n\n1.原汁",`\n\n${chk}\n\n1.原汁`);
   const plan=orderPlan();renderOrder(plan);
-  $("out").value=s.trim(); // 叫貨建議暫不放進群組貼文；要恢復改成 (s.trim()+orderText(plan)).trim()
+  $("out").value=s.trim();autoGrow($("out")); // 叫貨建議暫不放進群組貼文；要恢復改成 (s.trim()+orderText(plan)).trim()
 }
 
 // ---------- tabs / header ----------
 function tab(which){
   const inv=which==="inv";$("p-flow").hidden=inv;$("p-inv").hidden=!inv;
+  if(inv)requestAnimationFrame(()=>{autoGrow($("out"));autoGrow($("memo"))});
   $("t-flow").setAttribute("aria-selected",!inv);$("t-inv").setAttribute("aria-selected",inv);
   try{localStorage.setItem("tab",which)}catch(e){}
 }
