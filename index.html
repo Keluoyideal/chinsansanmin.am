@@ -112,6 +112,7 @@ td{padding:6px 3px}
 .ghost.all{font-size:12.5px;padding:3px 10px;font-weight:500}
 .nb{display:inline-block}
 textarea{resize:none;overflow:hidden}
+#out{height:220px;min-height:0;overflow-y:auto}
 textarea.memo{min-height:84px;margin-top:0}
 .olist{list-style:none;padding:0;margin:8px 2px 0;font-size:13px;color:var(--muted);display:grid;gap:3px}
 .olist b{color:var(--fg)}
@@ -527,13 +528,13 @@ function out(){
   const chk=undone.length?`離峰檢查 ${all.length-undone.length}/${all.length}，未完成：\n${undone.map(x=>"⚠️ "+x).join("\n")}`:`離峰檢查 ${all.length}/${all.length} 全部完成 ✅`;
   s=s.replace("\n\n1.原汁",`\n\n${chk}\n\n1.原汁`);
   const plan=orderPlan();renderOrder(plan);
-  $("out").value=s.trim();autoGrow($("out")); // 叫貨建議暫不放進群組貼文；要恢復改成 (s.trim()+orderText(plan)).trim()
+  $("out").value=s.trim(); // 叫貨建議暫不放進群組貼文；要恢復改成 (s.trim()+orderText(plan)).trim()
 }
 
 // ---------- tabs / header ----------
 function tab(which){
   const inv=which==="inv";$("p-flow").hidden=inv;$("p-inv").hidden=!inv;
-  if(inv)requestAnimationFrame(()=>{autoGrow($("out"));autoGrow($("memo"))});
+  if(inv)requestAnimationFrame(()=>autoGrow($("memo")));
   $("t-flow").setAttribute("aria-selected",!inv);$("t-inv").setAttribute("aria-selected",inv);
   try{localStorage.setItem("tab",which)}catch(e){}
 }
