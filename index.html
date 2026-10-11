@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#b35a22">
+<title>早班中班Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: one narrow column, two tabs (流程 / 盤點), sticky top date bar, fixed bottom action bar */
+:root{
+  --bg:#f5f2ee; --surface:#ffffff; --line:#e3dcd3; --fg:#2a231d; --muted:#76695d;
+  --accent:#b35a22; --accent-soft:#f6e4d6; --warn:#a33a2e; --warn-soft:#f6dedb;
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#181614; --surface:#221f1c; --line:#36312c; --fg:#ece6df; --muted:#a3968a;
+  --accent:#e8945a; --accent-soft:#3a2a1e; --warn:#e57d6e; --warn-soft:#3a2220; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#181614; --surface:#221f1c; --line:#36312c; --fg:#ece6df; --muted:#a3968a;
+  --accent:#e8945a; --accent-soft:#3a2a1e; --warn:#e57d6e; --warn-soft:#3a2220; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 96px}
+.wrap{max-width:560px;margin:0 auto}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5;padding-block:12px 8px;display:grid;gap:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+h1{font-size:19px;font-weight:900;margin:0;letter-spacing:.02em;flex:1;min-width:0}
+.status{font-size:12px;color:var(--muted)}
+.fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+label.f{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;font-size:12px;color:var(--muted);min-width:0}
+input,button{font:inherit;color:inherit}
+.f input,.f select{display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;max-width:100%;min-width:0;height:42px;font-size:15px;color:var(--fg);-webkit-appearance:none;appearance:none}
+.f input[type="date"]{text-align:left}
+.f input[type="date"]::-webkit-date-and-time-value{text-align:left}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{border:0;background:none;padding:8px;border-radius:7px;font-weight:700;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+section{margin-block:18px}
+h2{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--accent);margin:0 0 6px}
+h3{font-size:16px;font-weight:900;margin:0 0 8px}
+.gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cnt{font-size:12px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:1px 9px;font-variant-numeric:tabular-nums}
+.cnt.full{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.item{display:flex;gap:12px;align-items:flex-start;padding:11px 12px;border-top:1px solid var(--line);cursor:pointer}
+.item:first-child{border-top:0}
+.item input{appearance:none;width:22px;height:22px;flex:none;border:2px solid var(--line);border-radius:6px;margin:1px 0 0;display:grid;place-items:center;cursor:pointer}
+.item input:checked{background:var(--accent);border-color:var(--accent)}
+.item input:checked::after{content:"";width:6px;height:11px;border:solid var(--surface);border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.item input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.item span{min-width:0}
+.item.done span{color:var(--muted);text-decoration:line-through}
+.item small{display:block;color:var(--muted);font-size:12.5px;text-decoration:none}
+.note{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13.5px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:11.5px;font-weight:500;color:var(--muted);text-align:center;padding:8px 4px;letter-spacing:.04em}
+th:first-child{text-align:left;padding-left:12px}
+td{border-top:1px solid var(--line);padding:6px 4px;text-align:center;vertical-align:top}
+td:first-child{text-align:left;padding-left:12px;font-weight:700;padding-top:13px;white-space:nowrap}
+td input{width:100%;max-width:56px;text-align:center;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 2px;font-variant-numeric:tabular-nums}
+td input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.prev{display:block;font-size:11px;color:var(--muted);margin-top:2px;min-height:15px}
+.prev b{font-weight:700}
+td input.auto{background:transparent;border-color:transparent;font-weight:700}
+td input.auto.total{color:var(--accent)}
+td input.auto.open{background:var(--warn-soft);border-color:var(--warn)}
+.fix{color:var(--warn)}
+.tbar{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.tbar h3{margin:0}
+.ghost{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:20px;padding:4px 12px;font-size:13px;cursor:pointer}
+.ghost[aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:var(--surface)}
+.ghost:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+td{padding:6px 3px}
+.ord{padding:12px;margin-bottom:10px}
+.ordh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px}
+.ordh small{color:var(--muted);font-size:12.5px}
+.ord ul{margin:8px 0 0;padding-left:20px;font-variant-numeric:tabular-nums}
+.ord li{padding:2px 0}
+.muted{color:var(--muted);margin:0;font-size:13.5px}
+.miss{color:var(--warn);font-size:13px;margin:8px 0 0}
+.full{grid-column:1/-1}
+.chip:disabled{opacity:.35;cursor:default}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:20px;padding:6px 12px;font-size:14px;cursor:pointer;line-height:1.2}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:700}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.otag{display:block;color:var(--accent);font-size:12.5px;font-weight:400;margin-top:2px;white-space:nowrap}
+.otag small{display:block;color:var(--muted);font-weight:400;font-size:11px}
+.otag{white-space:normal}
+.otag.inl{display:inline-block;margin:0 0 0 8px;background:var(--accent-soft);border-radius:6px;padding:1px 6px}
+.otag.low{color:var(--warn)}
+.otag.low.inl{background:var(--warn-soft)}
+.ovend{display:block;color:var(--muted);font-weight:400;font-size:11px;margin-top:2px}
+.warnbar{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:8;max-width:528px;margin:0 auto;background:var(--surface);border:1px solid var(--warn);border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.15);display:grid;gap:8px}
+.warnbar p{margin:0;color:var(--warn);font-size:14px}
+.warnbar .row{justify-content:flex-end}
+.ghr{display:flex;align-items:center;gap:6px;flex:none}
+.ghost.all{font-size:12.5px;padding:3px 10px;font-weight:500}
+.nb{display:inline-block}
+textarea.memo{min-height:84px;margin-top:0}
+.olist{list-style:none;padding:0;margin:8px 2px 0;font-size:13px;color:var(--muted);display:grid;gap:3px}
+.olist b{color:var(--fg)}
+.up{color:var(--accent)} .down{color:var(--warn)}
+.legend{font-size:12px;color:var(--muted);margin:6px 2px 0}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));z-index:6}
+.bar .wrap{display:flex;gap:10px;align-items:center}
+.prog{flex:1;min-width:0;font-size:13px;color:var(--muted)}
+.meter{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:4px}
+.meter i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.btn{border:0;background:var(--accent);color:var(--surface);font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.btn:focus-visible,.tabs button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+textarea{width:100%;min-height:200px;margin-top:10px;font:13px/1.5 var(--font);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:20px;font-size:13px;z-index:9}
+@media (prefers-reduced-motion:reduce){.meter i{transition:none}}
+/* 叫貨標籤統一成小色塊：原汁放在名稱下方，冷藏常溫放在名稱右邊 */
+.otag{display:table;margin-top:4px;background:none;border-radius:6px;padding:0}
+.otag.low{background:var(--warn-soft);padding:1px 6px}
+.otag.inl{display:inline-block;margin:0 0 0 8px;vertical-align:baseline;background:none}
+.otag.low.inl{background:var(--warn-soft)}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div class="row"><h1>早班中班Checklist</h1><span class="status" id="status">連線中…</span></div>
+    <div class="fields">
+      <label class="f">日期<input id="date" type="date"></label>
+      <label class="f">主要填表人<select id="filler"></select></label>
+      <div class="f full"><span>共同填表人（可多選）</span><div id="helpers" class="chips" role="group" aria-label="共同填表人"></div></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button id="t-flow" role="tab" aria-selected="true">每日檢查</button>
+      <button id="t-inv" role="tab" aria-selected="false">物料盤點</button>
+    </div>
+  </header>
+
+  <main id="p-flow"></main>
+  <main id="p-inv" hidden>
+    <p class="note" style="margin-top:14px"><span class="nb">快用完或缺少的物料要和幹部確認；</span><span class="nb">當班沒有幹部請傳訊息至群組。</span></p>
+    <div id="orderwarn"></div>
+    <section>
+      <div class="tbar"><h3>原汁</h3><button class="ghost" id="fixbtn" aria-pressed="false">數量有誤？修正</button></div>
+      <div class="group" style="overflow-x:auto">
+        <table><thead><tr><th>品項</th><th>昨日庫存</th><th>退冰使用</th><th>進貨</th><th>今日庫存</th></tr></thead><tbody id="juice"></tbody></table>
+      </div>
+      <div id="juiceorder"></div>
+    </section>
+    <section>
+      <h3>冷藏常溫</h3>
+      <div class="group" style="overflow-x:auto">
+        <table><thead><tr><th>品項</th><th>庫存</th><th>進貨</th></tr></thead><tbody id="cold"></tbody></table>
+      </div>
+      <div id="coldorder"></div>
+      <p class="legend">原汁只要填退冰使用和進貨，今日庫存＝昨日庫存－退冰＋進貨，會自動算。實際點的數字不同時，按「修正」手動改，清空就回到自動。冷藏常溫格子下方的小字是上一次的庫存。</p>
+      <p class="legend">品項旁的橘字是叫貨建議，依每週叫貨表計算，僅供參考。鉦旺樂建議一週叫兩次（週日盤點→週一叫、週三盤點→週四叫），其他日子顯示下一次的預估；其他廠商只在叫貨日出現。原汁、鮮奶撐不到下次到貨時會顯示「庫存偏低」。遇國定假日或廠商休息要提早一天叫。</p>
+    </section>
+    <section>
+      <h3>備註</h3>
+      <textarea id="memo" class="memo" placeholder="機器異常、缺貨、要交代的事…（有填才會附在群組訊息）"></textarea>
+    </section>
+    <section>
+      <h3>群組貼上用</h3>
+      <textarea id="out" readonly></textarea>
+    </section>
+  </main>
+</div>
+
+<div class="bar"><div class="wrap">
+  <div class="prog"><span id="progtxt">0 / 0 完成</span><div class="meter"><i id="meter"></i></div></div>
+  <button class="btn" id="copy">複製盤點</button>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+<div class="warnbar" id="warnbar" role="alert" hidden></div>
+
+<script>
+const FLOW=[
+ {h:"15:00 離峰檢查",t:"一、紀錄填寫",items:[
+  ["temp","冰箱溫度表已填寫並簽名"],
+  ["expiry","所有物料效期標籤已填寫","茶葉、粉包、菊花、珍珠、冬露、鮮奶油等冰箱內物料"]]},
+ {h:"15:00 離峰檢查",t:"二、設備清潔",items:[
+  ["leaves","茶機、茶煮桶內無明顯茶葉"],
+  ["teatop","茶機上方無灰塵，排氣孔沒有被遮蔽"],
+  ["teareset","茶機數值已復歸"],
+  ["boxes","茶葉、粉包置物盒無明顯茶葉髒污"],
+  ["filter","濾網乾淨無殘渣"],
+  ["stain","冰箱內無茶漬"]]},
+ {h:"15:00 離峰檢查",t:"三、吧檯整理",items:[
+  ["ice","配料台、果汁冰塊補滿"],
+  ["lids","冰槽、配料盒上蓋皆已闔上"],
+  ["cooling","冷卻中的配料盒為半蓋"],
+  ["peacup","水梨杯已收起"],
+  ["counter","檯面上沒有留垃圾"]]},
+ {h:"15:00 離峰檢查",t:"四、門市環境",items:[
+  ["dust","櫃檯、菜單無灰塵"],
+  ["airdoor","空氣門無灰塵"],
+  ["recycle","店內沒有放置回收垃圾"],
+  ["binlids","廢茶葉桶、瀝水桶上蓋皆已蓋上"],
+  ["bird","鳥叫聲已開啟"]]},
+ {h:"15:00 離峰檢查",t:"五、人員規範",items:[
+  ["mask","員工皆戴口罩、雙手戴手套"],
+  ["staff","員工物品皆放在員工專區"],
+  ["shelf","架子上沒有抹布、手機等個人物品"]]}
+];
+const STAFF=["力瑜","予諠","Jessie","Vicky","晨蕊","以馨","小唐","田祈","ㄍㄨㄣ","微媛","小潔","庭瑋"];
+const JUICE=["水梨","椪柑","甘蔗","蘋果","柳丁","紅柚","檸檬","水蜜桃"];
+const COLD=["鮮奶","多多","鮮奶油","荔枝","冬露","燕麥奶","糖桶"];
+const $=id=>document.getElementById(id);
+
+function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function fmtKey(k){const d=new Date(+("20"+k.slice(0,2)),+k.slice(2,4)-1,+k.slice(4,6));return `20${k.slice(0,2)}/${k.slice(2,4)}/${k.slice(4,6)}(${"日一二三四五六"[d.getDay()]})`}
+const toKey=s=>s.slice(2,4)+s.slice(5,7)+s.slice(8,10); // 2026-10-11 -> 261011
+let state=blank(), prev=null, saveTimer=null, saving=Promise.resolve();
+function blank(){return{filler:"",helpers:"",memo:"",checks:{},juice:{},cold:{},adj:{base:{},today:{}}}}
+
+// ---------- render flow ----------
+function renderFlow(){
+  let html=`<p class="note" style="margin-top:14px">若遇督導檢查有缺失，責任共同承擔，請互相提醒。</p>`,lastH="";
+  FLOW.forEach(g=>{
+    if(g.h!==lastH){if(lastH)html+="</section>";html+=`<section><h2>${g.h}</h2>`;lastH=g.h}
+    html+=`<h3 class="gh">${g.t}<span class="ghr"><span class="cnt" data-cnt="${FLOW.indexOf(g)}"></span><button type="button" class="ghost all" data-all="${FLOW.indexOf(g)}"></button></span></h3><div class="group" style="margin-bottom:16px">`;
+    g.items.forEach(([id,a,b])=>{
+      const on=!!state.checks[id];
+      html+=`<label class="item${on?" done":""}"><input type="checkbox" id="c-${id}" data-k="${id}"${on?" checked":""}><span>${a}${b?`<small>${b}</small>`:""}</span></label>`;
+    });
+    html+="</div>";
+  });
+  html+=`</section>`;
+  $("p-flow").innerHTML=html;
+  progress();
+}
+// 整區完成／取消勾選
+$("p-flow").addEventListener("click",e=>{
+  const b=e.target.closest("[data-all]");if(!b)return;
+  const g=FLOW[+b.dataset.all], full=g.items.every(i=>state.checks[i[0]]);
+  g.items.forEach(i=>{state.checks[i[0]]=!full});
+  renderFlow();out();queueSave();
+});
+$("p-flow").addEventListener("change",e=>{
+  const k=e.target.dataset.k;if(!k)return;
+  state.checks[k]=e.target.checked;
+  e.target.closest(".item").classList.toggle("done",e.target.checked);
+  progress();out();queueSave();
+});
+function progress(){
+  const all=FLOW.flatMap(g=>g.items).length, done=FLOW.flatMap(g=>g.items).filter(i=>state.checks[i[0]]).length;
+  $("progtxt").textContent=`${done} / ${all} 完成`;$("meter").style.width=(done/all*100)+"%";
+  document.querySelectorAll("[data-cnt]").forEach(el=>{
+    const g=FLOW[+el.dataset.cnt], n=g.items.filter(i=>state.checks[i[0]]).length;
+    el.textContent=`${n} / ${g.items.length}`;el.classList.toggle("full",n===g.items.length);
+    const b=document.querySelector(`[data-all="${el.dataset.cnt}"]`);if(b)b.textContent=n===g.items.length?"取消勾選":"整區完成";
+  });
+}
+
+// ---------- 叫貨建議（依「青山南京三民店｜每週叫貨表」10/8 版） ----------
+// 數字是叫貨表算好的目標庫存與日均用量；叫貨表每月更新後，改這裡的數字即可
+const ORDER={
+  // A. 鉦旺樂果汁（建議改成一週叫兩次）。[日均用量, 安全天數]，數字來自叫貨表 10/8 版
+  juice:{水蜜桃:[5.257,2],甘蔗:[2.889,2.5],柳丁:[2.571,1.5],蘋果:[2.389,2.5],椪柑:[2.257,1.5],紅柚:[0.771,1.5],檸檬:[0.171,1.5]},
+  // 兩個叫貨週期：count=盤點日、lead=盤點到到貨的天數、cover=盤點到「下一批」到貨的天數
+  juiceCycles:[
+    {count:0,order:"週一 12:00 前",arrive:"週三到",lead:3,cover:8},
+    {count:3,order:"週四 12:00 前",arrive:"下週一到",lead:5,cover:7}],
+  pearUse:7.094, freezerMax:170, // 冷凍上限（含水梨），保守推估，實際量過後再改
+  // B. 週日盤點 → 週一叫。[品項, 目標庫存, 叫貨倍數, 廠商, 叫貨時間, 最少叫幾個]
+  weekly:[
+    ["荔枝",12,12,"陸禎","週一 12:00 前・電話 02-8292-2366"],
+    ["鮮奶油",9,12,"德麥","週一・Line群組，週三到"],
+    ["糖桶",10,1,"傳佳","週一・Line群組，週三到",3,{max:6,use:0.808,lead:3}], // 最少叫 3 桶、店內最多放 6 桶
+    ["燕麥奶",13,6,"燕麥奶廠商","週一 14:00 前匯款＋填表，週四到"],
+    ["水梨",68,12,"總部","週一"],
+    ["冬露",8,6,"總部","週一"]],
+  // D. 鮮奶（光泉）：週日、二、四叫，隔天到。{星期: 到貨後目標}
+  milk:{0:60,2:60,4:70}, milkMax:70,
+  yakult:{under:20,qty:40}
+};
+// 非叫貨日的庫存預警：庫存 < 日均用量 × 到下次到貨的天數 → 可能撐不到
+// [日均用量, 到貨的星期(0=日)]；果汁用量取上面 ORDER.juice
+// 只看原汁和鮮奶，其他品項可以跟分店調貨
+const LOW={水梨:[7.094,[2]],鮮奶:[22,[1,3,5]]};
+["水蜜桃","甘蔗","柳丁","蘋果","椪柑","紅柚","檸檬"].forEach(n=>{LOW[n]=[0,[1,3]]});
+function stockOf(n){const v=(JUICE.includes(n)?state.juice[n]:state.cold[n]||[])?.[0];return has(v)?num(v):null}
+function orderPlan(){
+  const dow=new Date($("date").value+"T00:00").getDay(), groups=[], warns=[];
+  {
+    // 鉦旺樂果汁：週日盤點→週一叫（週三到）、週三盤點→週四叫（下週一到）
+    // 目標庫存 = 日均用量 ×（要撐幾天 + 安全天數），無條件進位；其他日子顯示下一次叫貨的預估
+    const cyc=ORDER.juiceCycles.find(c=>c.count===dow)||(dow>=1&&dow<=2?ORDER.juiceCycles[1]:ORDER.juiceCycles[0]);
+    const rows=Object.entries(ORDER.juice).map(([n,[u,safe]])=>{const t=Math.ceil(u*(cyc.cover+safe)-1e-9),s=stockOf(n);return{n,u,s,t,q:s===null?null:Math.max(0,t-s)}});
+    const boxUp=T=>{if(T<=0)return 0;return Math.min(Math.ceil(T/20)*20,Math.ceil(T/25)*25)};
+    const boxDown=T=>Math.max(Math.floor(T/20)*20,Math.floor(T/25)*25,0);
+    const boxName=t=>t%20===0?`${t/20} 個紙箱`:`${t/25} 個保麗龍箱`;
+    // 湊箱：差的瓶數依日均用量比例分配
+    const T=rows.reduce((a,r)=>a+(r.q||0),0);
+    let tot=boxUp(T);
+    if(tot>T){
+      let extra=tot-T;const U=rows.reduce((a,r)=>a+r.u,0);
+      const share=rows.map(r=>({r,x:extra*r.u/U}));
+      share.forEach(o=>{const k=Math.floor(o.x);o.r.q=(o.r.q||0)+k;extra-=k});
+      share.sort((a,b)=>(b.x%1)-(a.x%1)).slice(0,extra).forEach(o=>o.r.q++);
+    }
+    // 冷凍庫上限：到貨當下 = 各果汁 max(0, 庫存 − 到貨前用量) ＋ 叫貨量，水梨一起算；超過就往下減到放得下
+    let cut=0;
+    if(tot>0&&rows.every(r=>r.s!==null)){
+      const pear=stockOf("水梨")??0;
+      const pearQ=dow===0&&pear<68?Math.ceil((68-pear)/12)*12:0;
+      rows.forEach(r=>{r.a=Math.max(0,r.s-cyc.lead*r.u)});
+      const base=rows.reduce((a,r)=>a+r.a,0)+Math.max(0,pear-cyc.lead*ORDER.pearUse)+pearQ;
+      if(base+tot>ORDER.freezerMax){
+        const newTot=boxDown(ORDER.freezerMax-base);
+        cut=tot-newTot;
+        // 從到貨後最撐得久的品項開始少叫
+        for(let k=0;k<cut;k++){
+          let best=null;rows.forEach(r=>{if(r.q>0){const d=(r.a+r.q)/r.u;if(!best||d>best.d)best={r,d}}});
+          if(!best)break;best.r.q--;
+        }
+        tot=newTot;
+        if(newTot===0&&isFinite(base)&&base>ORDER.freezerMax)warns.push(`冷凍庫到貨時就已超過 ${ORDER.freezerMax} 瓶，果汁這次先不叫`);
+      }
+    }
+    const lines=rows.filter(r=>r.q>0).map(r=>`${r.n} ${r.q}`);
+    if(tot)lines.push(`合計 ${tot} 瓶（${boxName(tot)}）${cut?`，配合冷凍上限 ${ORDER.freezerMax} 少叫 ${cut} 瓶`:""}`);
+    else if(cut)lines.push(`配合冷凍上限 ${ORDER.freezerMax}，這次不叫`);
+    groups.push({title:"鉦旺樂",when:"",lines,missing:rows.filter(r=>r.q===null).map(r=>r.n)});
+  }
+  if(dow===0){
+    // 同一個廠商放一區
+    const byVendor={};
+    ORDER.weekly.forEach(([n,t,m,v,w,min=0,cap])=>{
+      const g=byVendor[v]=byVendor[v]||{title:v,when:w,lines:[],missing:[]};
+      const s=stockOf(n);if(s===null){g.missing.push(n);return}
+      let q=t-s>0?Math.max(min,Math.ceil((t-s)/m)*m):0;
+      if(q>0&&cap){
+        // 到貨時店裡大約還剩多少，加上叫貨量不能超過上限
+        const room=Math.floor(cap.max-Math.max(0,s-cap.lead*cap.use));
+        if(room<min){q=0;warns.push(`${n}到貨時放不下 ${min} 個（最多 ${cap.max}），這次先不叫`)}
+        else q=Math.min(q,Math.floor(room/m)*m);
+      }
+      if(q>0)g.lines.push(`${n} ${q}`);
+    });
+    Object.values(byVendor).filter(g=>g.lines.length||g.missing.length).forEach(g=>groups.push(g));
+  }
+  if(dow in ORDER.milk){
+    const s=stockOf("鮮奶");
+    if(s===null)groups.push({title:"光泉",when:"今天叫、明天到",lines:[],missing:["鮮奶"]});
+    else{
+      const t=ORDER.milk[dow];
+      const q=Math.max(0,Math.min(Math.floor((t+10-s)/10)*10,Math.floor((ORDER.milkMax+10-s)/10)*10));
+      groups.push({title:"光泉",when:dow===4?"今天叫、明天到；要撐到週日，一定要補滿":"今天叫、明天到",lines:q>0?[`鮮奶 ${q}`]:[],missing:[]});
+    }
+  }
+  if(dow===6){const s=stockOf("鮮奶");if(s!==null&&s<=20)warns.push(`鮮奶只剩 ${s} 瓶，撐不到週一，要提早處理`)}
+  const y=stockOf("多多");
+  if(y!==null&&y<=ORDER.yakult.under){
+    const hq=groups.find(g=>g.title==="總部"), line=`多多 ${ORDER.yakult.qty}`;
+    if(hq)hq.lines.push(line);else groups.push({title:"總部",when:`多多庫存 ≤${ORDER.yakult.under} 就叫`,lines:[line],missing:[]});
+  }
+  const ordered=new Set(groups.flatMap(g=>g.lines.map(l=>l.slice(0,l.lastIndexOf(" ")))));
+  const lows=[];
+  Object.entries(LOW).forEach(([n,[u,arr]])=>{
+    const s=stockOf(n);if(s===null)return;
+    const use=ORDER.juice[n]?ORDER.juice[n][0]:u;
+    const dist=a=>((a-dow+7)%7)||7, a=arr.reduce((x,y)=>dist(y)<dist(x)?y:x);
+    if(s<use*dist(a))lows.push({n,a});
+  });
+  return{dow,groups,warns,lows};
+}
+const VENDOR_LABEL={光泉:"光泉Line群組 週四週日不送",德麥:"德麥Line群組",傳佳:"傳佳Line群組",燕麥奶廠商:"燕麥奶廠商",陸禎:"陸禎02-8292-2366",總部:"總部"};
+const UNIT={水梨:"瓶",椪柑:"瓶",甘蔗:"瓶",蘋果:"瓶",柳丁:"瓶",紅柚:"瓶",檸檬:"瓶",水蜜桃:"瓶",鮮奶:"瓶",多多:"瓶",鮮奶油:"罐",荔枝:"罐",冬露:"罐",燕麥奶:"瓶",糖桶:"桶"};
+function renderOrder(plan){
+  // 叫貨建議直接標在表格的品項名稱下方；廠商、時間、警告放在表格下方
+  const tagFor={};
+  plan.groups.forEach(g=>g.lines.forEach(l=>{if(l.startsWith("合計")||l.startsWith("配合"))return;const k=l.lastIndexOf(" ");tagFor[l.slice(0,k)]={q:l.slice(k+1),v:g.title}}));
+  // 原汁：名稱下方只寫「叫 X」；冷藏常溫：數量放在名稱右邊，廠商小字在下方
+  document.querySelectorAll("#juice tr[data-row], #cold tr[data-row]").forEach(tr=>{
+    const td=tr.children[0], cold=tr.closest("#cold");
+    td.querySelectorAll(".otag,.ovend").forEach(x=>x.remove());
+    const o=tagFor[tr.dataset.row];if(!o)return;
+    const tag=document.createElement("span");tag.className=cold?"otag inl":"otag";tag.textContent=`建議叫貨：${o.q}${UNIT[tr.dataset.row]||""}`;td.appendChild(tag);
+    if(cold){const v=document.createElement("span");v.className="ovend";v.textContent=VENDOR_LABEL[o.v]??o.v;td.appendChild(v)}
+  });
+  // 非叫貨日：庫存可能撐不到下次到貨
+  (plan.lows||[]).forEach(l=>{
+    const tr=document.querySelector(`tr[data-row="${CSS.escape(l.n)}"]`);if(!tr)return;
+    // 放在品項名稱右邊（原汁、冷藏常溫一樣）
+    const td=tr.children[0], tag=document.createElement("span");tag.className="otag low inl";
+    tag.textContent="⚠️ 庫存偏低";td.insertBefore(tag,td.querySelector(".otag")||null);
+  });
+  $("orderwarn").innerHTML=plan.warns.map(w=>`<p class="note" style="margin-top:14px">⚠️ ${esc(w)}</p>`).join("");
+  const info=g=>`<li><b>${esc(g.title)}</b>　${esc(g.when)}${g.missing.length?`<span class="miss">（還沒填：${esc(g.missing.join("、"))}）</span>`:""}</li>`;
+  const jg=plan.groups.filter(g=>g.title==="鉦旺樂"), cg=plan.groups.filter(g=>g.title!=="鉦旺樂"&&(g.lines.length||g.missing.length));
+  $("juiceorder").innerHTML=jg.map(g=>{const sum=g.lines.find(l=>l.startsWith("合計")||l.startsWith("配合"));
+    return sum?`<ul class="olist"><li>鉦旺樂${esc(sum)}</li></ul>`:""}).join("");
+  $("coldorder").innerHTML="";
+}
+function orderText(plan){
+  const gs=plan.groups.filter(g=>g.lines.length);
+  if(!gs.length&&!plan.warns.length)return "";
+  let s="\n\n叫貨建議";
+  gs.forEach(g=>{g.lines.filter(l=>!l.startsWith("合計")).forEach(l=>{s+="\n"+l})});
+  plan.warns.forEach(w=>{s+=`\n⚠️ ${w}`});
+  return s;
+}
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+// 冷藏常溫：庫存比昨天多卻沒填進貨 → 提醒（過去最常見的盤點錯誤）
+function coldHint(n){
+  const a=state.cold[n]||[], pv=((prev?.cold||{})[n]||[])[0], v=a[0];
+  if(!has(pv))return "";
+  let p=`昨 <b>${pv}</b>`;
+  if(has(v)){const d=num(v)-num(pv);if(d)p+=` <span class="${d>0?"up":"down"}">${d>0?"▲":"▼"}${Math.abs(d)}</span>`;
+    if(d>0&&!has(a[1]))p+=`<span class="fix" style="display:block">進貨沒填？</span>`}
+  return p;
+}
+
+// ---------- render inventory ----------
+// 原汁：昨日庫存（自動帶入，鎖定）− 退冰使用 + 進貨 = 今日庫存（自動算）
+// 「修正數量」打開後，昨日庫存與今日庫存可以手動改；清空就回到自動
+let editMode=false;
+const num=v=>Number(v)||0;
+const has=v=>v!==undefined&&v!==null&&v!=="";
+function adj(){state.adj=state.adj||{};state.adj.base=state.adj.base||{};state.adj.today=state.adj.today||{};return state.adj}
+function prevStock(n){return ((prev?.juice||{})[n]||[])[0]}
+function baseOf(n){const a=adj();return has(a.base[n])?a.base[n]:prevStock(n)}
+function calcToday(n){
+  const r=state.juice[n]||[], b=baseOf(n);
+  if(!has(b))return "";
+  return String(num(b)-num(r[1])+num(r[2]));
+}
+function syncToday(n){
+  const a=adj(), r=[...(state.juice[n]||[])];
+  if(has(a.today[n]))r[0]=a.today[n];
+  else if(has(baseOf(n)))r[0]=calcToday(n);
+  // 沒有前一天資料時（第一天），今日庫存直接手填
+  state.juice[n]=r;
+}
+function juiceRow(n){
+  const a=adj(), r=state.juice[n]||[], b=baseOf(n), ps=prevStock(n);
+  const lock=editMode?"":" readonly";
+  const baseHint=has(a.base[n])?`<span class="fix">已修正${has(ps)?"，原 "+ps:""}</span>`:"";
+  const calc=calcToday(n);
+  let todayHint="";
+  if(has(a.today[n])){const d=has(calc)?num(a.today[n])-num(calc):null;todayHint=`<span class="fix">已修正${d?`，差 ${d>0?"+":""}${d}`:""}</span>`}
+  return `<tr data-row="${n}"><td>${n}</td>
+    <td><input class="auto${editMode?" open":""}" inputmode="numeric" id="juice-${n}-base" data-g="juice" data-n="${n}" data-f="base" value="${has(b)?b:""}" placeholder="—" aria-label="${n} 昨日庫存"${lock}><span class="prev">${baseHint}</span></td>
+    <td><input inputmode="numeric" id="juice-${n}-1" data-g="juice" data-n="${n}" data-f="1" value="${r[1]??""}" aria-label="${n} 退冰使用"><span class="prev"></span></td>
+    <td><input inputmode="numeric" id="juice-${n}-2" data-g="juice" data-n="${n}" data-f="2" value="${r[2]??""}" aria-label="${n} 進貨"><span class="prev"></span></td>
+    <td><input class="auto total${editMode||!has(b)?" open":""}" inputmode="numeric" id="juice-${n}-today" data-g="juice" data-n="${n}" data-f="today" value="${r[0]??""}" placeholder="—" aria-label="${n} 今日庫存"${has(b)?lock:""}><span class="prev">${todayHint}</span></td></tr>`;
+}
+function coldCell(n,i){
+  const v=(state.cold[n]||[])[i]??"", pv=((prev?.cold||{})[n]||[])[i];
+  const p=i===0?coldHint(n):"";
+  return `<td><input inputmode="numeric" id="cold-${n}-${i}" data-g="cold" data-n="${n}" data-i="${i}" value="${v}" aria-label="${n}"><span class="prev">${p}</span></td>`;
+}
+$("memo").addEventListener("input",e=>{state.memo=e.target.value;out();queueSave()});
+function renderInv(){
+  if(document.activeElement!==$("memo"))$("memo").value=state.memo||"";
+  JUICE.forEach(syncToday);
+  $("juice").innerHTML=JUICE.map(juiceRow).join("");
+  $("cold").innerHTML=COLD.map(n=>`<tr data-row="${n}"><td>${n}</td>${[0,1].map(i=>coldCell(n,i)).join("")}</tr>`).join("");
+  $("fixbtn").textContent=editMode?"完成修正":"數量有誤？修正";
+  $("fixbtn").setAttribute("aria-pressed",editMode);
+  out();
+}
+$("fixbtn").onclick=()=>{editMode=!editMode;renderInv()};
+function refreshRow(n,skip){
+  const tr=document.querySelector(`tr[data-row="${CSS.escape(n)}"]`);if(!tr)return;
+  const tmp=document.createElement("tbody");tmp.innerHTML=juiceRow(n);
+  const fresh=tmp.firstElementChild;
+  [...tr.children].forEach((td,i)=>{
+    const inp=td.querySelector("input"), fin=fresh.children[i].querySelector("input");
+    if(inp&&inp!==skip)inp.value=fin.value;
+    const sp=td.querySelector(".prev");if(sp)sp.innerHTML=fresh.children[i].querySelector(".prev")?.innerHTML||"";
+  });
+}
+$("p-inv").addEventListener("input",e=>{
+  const t=e.target;if(!t.dataset.g||t.readOnly)return;
+  t.value=t.value.replace(/[^\d.\-]/g,"");
+  const n=t.dataset.n;
+  if(t.dataset.g==="juice"){
+    const a=adj(), f=t.dataset.f;
+    if(f==="base"){if(t.value==="")delete a.base[n];else a.base[n]=t.value}
+    else if(f==="today"){
+      if(!has(baseOf(n))){const r=[...(state.juice[n]||[])];r[0]=t.value;state.juice[n]=r}
+      else if(t.value==="")delete a.today[n];else a.today[n]=t.value}
+    else{const r=[...(state.juice[n]||[])];r[+f]=t.value;state.juice[n]=r}
+    syncToday(n);refreshRow(n,t);
+  }else{
+    const arr=[...(state.cold[n]||[])];arr[+t.dataset.i]=t.value;state.cold[n]=arr;
+    const row=t.closest("tr");row.children[1].querySelector(".prev").innerHTML=coldHint(n);
+  }
+  out();queueSave();
+});
+// 清空被修正的格子時，回到自動數字
+$("p-inv").addEventListener("change",e=>{const t=e.target;if(t.dataset.g==="juice"&&(t.dataset.f==="base"||t.dataset.f==="today")&&t.value===""){renderInv()}});
+function out(){
+  const f=a=>a===undefined||a===""?"0":a;
+  let s=`‼️每日店內物料盤點\n日期：${(()=>{const v=$("date").value,d=new Date(v+"T00:00");return `${+v.slice(5,7)}/${+v.slice(8,10)} (${"日一二三四五六"[d.getDay()]})`})()}\n填表人：${[state.filler,state.helpers].filter(Boolean).join("、")}\n\n1.原汁（今日庫存/退冰使用/進貨）\n`;
+  JUICE.forEach(n=>{const a=state.juice[n]||[];s+=`${n} ${f(a[0])}/${f(a[1])}/${f(a[2])}\n`});
+  s+=`\n冷藏常溫（庫存/使用/進貨）\n`;
+  // 使用 = 前一天庫存 + 今日進貨 − 今日庫存（自動算，沒有前一天資料時寫 -）
+  COLD.forEach(n=>{const a=state.cold[n]||[], pv=((prev?.cold||{})[n]||[])[0];
+    const use=has(pv)&&has(a[0])?String(num(pv)+num(a[1])-num(a[0])):"-";
+    s+=`${n} ${f(a[0])}/${use}/${f(a[1])}\n`});
+  if((state.memo||"").trim())s+=`\n備註：${state.memo.trim()}\n`;
+  // 檢查表沒勾完的項目附在最後
+  const all=FLOW.flatMap(g=>g.items), undone=all.filter(i=>!state.checks[i[0]]).map(i=>i[1]);
+  const chk=undone.length?`離峰檢查 ${all.length-undone.length}/${all.length}，未完成：\n${undone.map(x=>"⚠️ "+x).join("\n")}`:`離峰檢查 ${all.length}/${all.length} 全部完成 ✅`;
+  s=s.replace("\n\n1.原汁",`\n\n${chk}\n\n1.原汁`);
+  const plan=orderPlan();renderOrder(plan);
+  $("out").value=s.trim(); // 叫貨建議暫不放進群組貼文；要恢復改成 (s.trim()+orderText(plan)).trim()
+}
+
+// ---------- tabs / header ----------
+function tab(which){
+  const inv=which==="inv";$("p-flow").hidden=inv;$("p-inv").hidden=!inv;
+  $("t-flow").setAttribute("aria-selected",!inv);$("t-inv").setAttribute("aria-selected",inv);
+  try{localStorage.setItem("tab",which)}catch(e){}
+}
+$("t-flow").onclick=()=>tab("flow");$("t-inv").onclick=()=>tab("inv");
+// 主要填表人（單選）＋共同填表人（可多選）
+function fillerList(v){return String(v||"").split(/[、,，\s]+/).filter(Boolean)}
+function chipHTML(names,pick,disabled){return names.map(n=>`<button type="button" class="chip" data-n="${esc(n)}" aria-pressed="${pick.includes(n)}"${disabled.includes(n)?" disabled":""}>${esc(n)}</button>`).join("")}
+function setFiller(){
+  const main=fillerList(state.filler)[0]||"", help=fillerList(state.helpers).filter(n=>n!==main);
+  const extra=[main,...help].filter(n=>n&&!STAFF.includes(n)), names=[...STAFF,...extra];
+  $("filler").innerHTML=`<option value="">請選擇</option>`+names.map(n=>`<option${n===main?" selected":""}>${esc(n)}</option>`).join("");
+  $("filler").value=main;
+  $("helpers").innerHTML=chipHTML(names,help,main?[main]:[]);
+}
+$("filler").addEventListener("change",e=>{
+  state.filler=e.target.value;
+  state.helpers=fillerList(state.helpers).filter(x=>x!==state.filler).join("、");
+  setFiller();out();queueSave();
+});
+$("helpers").addEventListener("click",e=>{
+  const b=e.target.closest(".chip");if(!b||b.disabled)return;
+  const n=b.dataset.n, cur=fillerList(state.helpers);
+  const next=cur.includes(n)?cur.filter(x=>x!==n):[...cur,n];
+  state.helpers=STAFF.filter(x=>next.includes(x)).concat(next.filter(x=>!STAFF.includes(x))).join("、");
+  setFiller();out();queueSave();
+});
+setFiller();
+$("date").addEventListener("change",()=>loadDay());
+// 複製前檢查漏填；原汁退冰沒有用也要填 0，空白和 0 分開
+function missingFields(){
+  const m=[];
+  if(!state.filler)m.push({label:"主要填表人",el:"filler",tab:null});
+  JUICE.forEach(n=>{if(!has((state.juice[n]||[])[0]))m.push({label:n,el:`juice-${n}-today`,tab:"inv"})});
+  JUICE.forEach(n=>{if(!has((state.juice[n]||[])[1]))m.push({label:`${n}退冰`,el:`juice-${n}-1`,tab:"inv"})});
+  COLD.forEach(n=>{if(!has((state.cold[n]||[])[0]))m.push({label:n,el:`cold-${n}-0`,tab:"inv"})});
+  return m;
+}
+async function doCopy(){
+  hideWarn();out();const txt=$("out").value;
+  try{await navigator.clipboard.writeText(txt);toast("已複製，貼到群組即可")}
+  catch(e){tab("inv");$("out").focus();$("out").select();toast("請長按選取後複製")}
+}
+function hideWarn(){$("warnbar").hidden=true}
+$("copy").onclick=()=>{
+  const m=missingFields();
+  if(!m.length)return doCopy();
+  const wb=$("warnbar");
+  wb.innerHTML=`<p>還沒填：${esc(m.map(x=>x.label).join("、"))}</p><div class="row"><button type="button" class="ghost" id="goFix">前往填寫</button><button type="button" class="ghost" id="copyAnyway">仍要複製</button></div>`;
+  wb.hidden=false;
+  $("goFix").onclick=()=>{hideWarn();const f=m[0];if(f.tab)tab(f.tab);const el=$(f.el);if(el){el.scrollIntoView({block:"center",behavior:"smooth"});setTimeout(()=>el.focus({preventScroll:true}),300)}};
+  $("copyAnyway").onclick=doCopy;
+};
+function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,2200)}
+
+// ---------- storage (Google 試算表) ----------
+// 部署 Apps Script 後，把網頁應用程式網址貼在這裡
+const API_URL="https://script.google.com/macros/s/AKfycbzSKPGiQU5dYlWTXYvywBW1SJreP6BAmoTXDrsWbI_L8uBH1s03ANgX0eJqkhAjsWKA/exec";
+
+let loadSeq=0;
+function queueSave(){
+  if(!API_URL){$("status").textContent="尚未設定試算表，資料不會保存";return}
+  $("status").textContent="儲存中…";
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    const key=toKey($("date").value), body=JSON.stringify({...state,date:key});
+    saving=saving.then(()=>fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body}))
+      .then(r=>r.json()).then(j=>{$("status").textContent=j.ok?"已儲存":"儲存失敗，稍後再試"})
+      .catch(()=>{$("status").textContent="儲存失敗，請檢查網路"});
+  },800);
+}
+async function loadDay(){
+  const key=toKey($("date").value), seq=++loadSeq;
+  state=blank();prev=null;setFiller();
+  renderFlow();renderInv();
+  if(!API_URL){$("status").textContent="尚未設定試算表，資料不會保存";return}
+  $("status").textContent="讀取中…";
+  try{
+    const j=await (await fetch(API_URL+"?date="+key)).json();
+    if(seq!==loadSeq)return;
+    prev=j.prev||null;
+    const d=j.day;
+    if(d){state={filler:d.filler||"",helpers:d.helpers||"",memo:d.memo||"",checks:d.checks||{},juice:d.juice||{},cold:d.cold||{},adj:d.adj||{}};setFiller()}
+    renderFlow();renderInv();
+    $("status").textContent=prev?`對照 ${fmtKey(prev.date)} 的盤點`:"尚無前一天盤點";
+  }catch(e){$("status").textContent="讀取失敗，請重新整理"}
+}
+
+// ---------- 同步其他人填的內容（約每 15 秒） ----------
+let lastEdit=0, lastTouch=Date.now();
+["input","change"].forEach(ev=>document.addEventListener(ev,()=>{lastEdit=Date.now()},true));
+// 有人在用才同步：3 分鐘沒碰畫面就暫停，再點一下就恢復
+["pointerdown","keydown","scroll","focus"].forEach(ev=>window.addEventListener(ev,()=>{
+  const idle=Date.now()-lastTouch>180000;lastTouch=Date.now();if(idle)poll();
+},{capture:true,passive:true}));
+async function poll(){
+  if(!API_URL||document.hidden||Date.now()-lastTouch>180000)return;
+  const busy=Date.now()-lastEdit<6000||["INPUT","SELECT","TEXTAREA"].includes(document.activeElement?.tagName);
+  if(busy)return;
+  const key=toKey($("date").value), seq=loadSeq;
+  try{
+    await saving;
+    const j=await (await fetch(API_URL+"?date="+key)).json();
+    if(seq!==loadSeq||Date.now()-lastEdit<6000)return;
+    const d=j.day;if(!d)return;
+    const next={filler:d.filler||"",helpers:d.helpers||"",memo:d.memo||"",checks:d.checks||{},juice:d.juice||{},cold:d.cold||{},adj:d.adj||{}};
+    if(JSON.stringify(next)!==JSON.stringify(state)){
+      state=next;setFiller();renderFlow();renderInv();
+      $("status").textContent="已同步其他人的更新";
+    }
+  }catch(e){}
+}
+setInterval(poll,15000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll()});
+
+// ---------- boot ----------
+$("date").value=todayStr();
+try{if(localStorage.getItem("tab")==="inv")tab("inv")}catch(e){}
+loadDay();
+</script>
+</body>
+</html>
