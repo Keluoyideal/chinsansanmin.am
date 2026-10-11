@@ -114,6 +114,8 @@ td{padding:6px 3px}
 textarea{resize:none;overflow:hidden}
 #out{height:220px;min-height:0;overflow-y:auto}
 textarea.memo{min-height:84px;margin-top:0}
+.stwrap{display:grid;justify-items:end;text-align:right;line-height:1.35}
+.upd{font-size:12.5px;color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
 .olist{list-style:none;padding:0;margin:8px 2px 0;font-size:13px;color:var(--muted);display:grid;gap:3px}
 .olist b{color:var(--fg)}
 .up{color:var(--accent)} .down{color:var(--warn)}
@@ -141,7 +143,7 @@ textarea{width:100%;min-height:200px;margin-top:10px;font:13px/1.5 var(--font);b
 
 <div class="wrap">
   <header>
-    <div class="row"><h1>早班中班Checklist</h1><span class="status" id="status">連線中…</span></div>
+    <div class="row"><h1>早班中班Checklist</h1><div class="stwrap"><span class="upd" id="updated"></span><span class="status" id="status">連線中…</span></div></div>
     <div class="fields">
       <label class="f">日期<input id="date" type="date"></label>
       <label class="f">主要填表人<select id="filler"></select></label>
@@ -471,6 +473,7 @@ function coldCell(n,i){
 }
 $("memo").addEventListener("input",e=>{autoGrow(e.target);state.memo=e.target.value;out();queueSave()});
 function renderInv(){
+  showUpdated();
   if(document.activeElement!==$("memo"))$("memo").value=state.memo||"";
   requestAnimationFrame(()=>autoGrow($("memo")));
   JUICE.forEach(syncToday);
@@ -513,6 +516,13 @@ $("p-inv").addEventListener("input",e=>{
 $("p-inv").addEventListener("change",e=>{const t=e.target;if(t.dataset.g==="juice"&&(t.dataset.f==="base"||t.dataset.f==="today")&&t.value===""){renderInv()}});
 // 文字框自動長高，不用手動拉
 function autoGrow(t){if(!t)return;t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"}
+// 右上角「最後更新」：存在 adj.savedAt，網頁版和試算表版都適用
+function showUpdated(){
+  const t=state.adj&&state.adj.savedAt, el=$("updated");if(!el)return;
+  if(!t){el.textContent="";return}
+  const d=new Date(t), now=new Date(), hm=`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  el.textContent="最後更新 "+(d.toDateString()===now.toDateString()?hm:`${d.getMonth()+1}/${d.getDate()} ${hm}`);
+}
 function out(){
   const f=a=>a===undefined||a===""?"0":a;
   let s=`‼️每日店內物料盤點\n日期：${(()=>{const v=$("date").value,d=new Date(v+"T00:00");return `${+v.slice(5,7)}/${+v.slice(8,10)} (${"日一二三四五六"[d.getDay()]})`})()}\n填表人：${[state.filler,state.helpers].filter(Boolean).join("、")}\n\n1.原汁（今日庫存/退冰使用/進貨）\n`;
@@ -599,6 +609,7 @@ function queueSave(){
   $("status").textContent="儲存中…";
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
+    adj().savedAt=new Date().toISOString();showUpdated();
     const key=toKey($("date").value), body=JSON.stringify({...state,date:key});
     saving=saving.then(()=>fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body}))
       .then(r=>r.json()).then(j=>{$("status").textContent=j.ok?"已儲存":"儲存失敗，稍後再試"})
