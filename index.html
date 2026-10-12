@@ -193,7 +193,7 @@ th{font-size:.72rem}
         <table><thead><tr><th>品項</th><th>昨日庫存</th><th>今日庫存</th><th>進貨</th></tr></thead><tbody id="cold"></tbody></table>
       </div>
       <div id="coldorder"></div>
-      <p class="legend">原汁只要填退冰使用和進貨，今日庫存＝昨日庫存－退冰＋進貨，會自動算。實際點的數字不同時，按「修正」手動改，清空就回到自動。冷藏常溫的昨日庫存也會自動帶入，今日庫存下方的▲▼是跟昨天比的增減，同樣可以按「修正」手動改。</p>
+      <p class="legend">原汁只要填退冰使用和進貨，今日庫存＝昨日庫存－退冰＋進貨，會自動算。實際點的數字不同時，按「修正」手動改，清空就回到自動。冷藏常溫的昨日庫存也會自動帶入，今日庫存請連今天的進貨一起算，進貨另外填；今日庫存下方的「用 X」是自動算的使用量，同樣可以按「修正」手動改。</p>
       <p class="legend">品項旁的橘字是叫貨建議，依每週叫貨表計算，僅供參考。鉦旺樂建議一週叫兩次（週日盤點→週一叫、週三盤點→週四叫），其他日子顯示下一次的預估；其他廠商只在叫貨日出現。原汁、鮮奶撐不到下次到貨時會顯示「庫存偏低」。遇國定假日或廠商休息要提早一天叫。</p>
     </section>
     <section>
@@ -461,12 +461,13 @@ function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 // 冷藏常溫：庫存比昨天多卻沒填進貨 → 提醒（過去最常見的盤點錯誤）
 // 冷藏常溫的昨日庫存：前一天帶入，「修正」模式可手動改（存在 adj.cbase）
 function coldBase(n){const a=adj();a.cbase=a.cbase||{};return has(a.cbase[n])?a.cbase[n]:((prev?.cold||{})[n]||[])[0]}
+// 今日庫存已含今天的進貨 → 使用 = 昨日庫存 + 進貨 − 今日庫存
 function coldHint(n){
   const a=state.cold[n]||[], pv=coldBase(n), v=a[0];
   if(!has(pv)||!has(v))return "";
-  const d=num(v)-num(pv);let p=d?`<span class="${d>0?"up":"down"}">${d>0?"▲":"▼"}${Math.abs(d)}</span>`:"";
-  if(d>0&&!has(a[1]))p+=`<span class="fix" style="display:block">進貨沒填？</span>`;
-  return p;
+  const use=num(pv)+num(a[1])-num(v);
+  if(use<0)return `<span class="fix">用 ${use}，進貨沒填？</span>`;
+  return `<span class="down">用 ${use}</span>`;
 }
 function coldBaseCell(n){
   const a=adj();a.cbase=a.cbase||{};const b=coldBase(n), ps=((prev?.cold||{})[n]||[])[0];
