@@ -188,12 +188,12 @@ th{font-size:.72rem}
       <div id="juiceorder"></div>
     </section>
     <section>
-      <h3>冷藏常溫</h3>
+      <div class="tbar"><h3>冷藏常溫</h3><button class="ghost" id="fixbtn2" aria-pressed="false">數量有誤？修正</button></div>
       <div class="group" style="overflow-x:auto">
-        <table><thead><tr><th>品項</th><th>庫存</th><th>進貨</th></tr></thead><tbody id="cold"></tbody></table>
+        <table><thead><tr><th>品項</th><th>昨日庫存</th><th>今日庫存</th><th>進貨</th></tr></thead><tbody id="cold"></tbody></table>
       </div>
       <div id="coldorder"></div>
-      <p class="legend">原汁只要填退冰使用和進貨，今日庫存＝昨日庫存－退冰＋進貨，會自動算。實際點的數字不同時，按「修正」手動改，清空就回到自動。冷藏常溫格子下方的小字是上一次的庫存。</p>
+      <p class="legend">原汁只要填退冰使用和進貨，今日庫存＝昨日庫存－退冰＋進貨，會自動算。實際點的數字不同時，按「修正」手動改，清空就回到自動。冷藏常溫的昨日庫存也會自動帶入，今日庫存下方的▲▼是跟昨天比的增減，同樣可以按「修正」手動改。</p>
       <p class="legend">品項旁的橘字是叫貨建議，依每週叫貨表計算，僅供參考。鉦旺樂建議一週叫兩次（週日盤點→週一叫、週三盤點→週四叫），其他日子顯示下一次的預估；其他廠商只在叫貨日出現。原汁、鮮奶撐不到下次到貨時會顯示「庫存偏低」。遇國定假日或廠商休息要提早一天叫。</p>
     </section>
     <section>
@@ -447,13 +447,19 @@ function orderText(plan){
 }
 function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 // 冷藏常溫：庫存比昨天多卻沒填進貨 → 提醒（過去最常見的盤點錯誤）
+// 冷藏常溫的昨日庫存：前一天帶入，「修正」模式可手動改（存在 adj.cbase）
+function coldBase(n){const a=adj();a.cbase=a.cbase||{};return has(a.cbase[n])?a.cbase[n]:((prev?.cold||{})[n]||[])[0]}
 function coldHint(n){
-  const a=state.cold[n]||[], pv=((prev?.cold||{})[n]||[])[0], v=a[0];
-  if(!has(pv))return "";
-  let p=`昨 <b>${pv}</b>`;
-  if(has(v)){const d=num(v)-num(pv);if(d)p+=` <span class="${d>0?"up":"down"}">${d>0?"▲":"▼"}${Math.abs(d)}</span>`;
-    if(d>0&&!has(a[1]))p+=`<span class="fix" style="display:block">進貨沒填？</span>`}
+  const a=state.cold[n]||[], pv=coldBase(n), v=a[0];
+  if(!has(pv)||!has(v))return "";
+  const d=num(v)-num(pv);let p=d?`<span class="${d>0?"up":"down"}">${d>0?"▲":"▼"}${Math.abs(d)}</span>`:"";
+  if(d>0&&!has(a[1]))p+=`<span class="fix" style="display:block">進貨沒填？</span>`;
   return p;
+}
+function coldBaseCell(n){
+  const a=adj();a.cbase=a.cbase||{};const b=coldBase(n), ps=((prev?.cold||{})[n]||[])[0];
+  const hint=has(a.cbase[n])?`<span class="fix">已修正${has(ps)?"，原 "+ps:""}</span>`:"";
+  return `<td><input class="auto${editMode?" open":""}" inputmode="numeric" id="cold-${n}-base" data-g="cold" data-n="${n}" data-f="base" value="${has(b)?b:""}" placeholder="—" aria-label="${n} 昨日庫存"${editMode?"":" readonly"}><span class="prev">${hint}</span></td>`;
 }
 
 // ---------- render inventory ----------
@@ -502,12 +508,11 @@ function renderInv(){
   requestAnimationFrame(()=>autoGrow($("memo")));
   JUICE.forEach(syncToday);
   $("juice").innerHTML=JUICE.map(juiceRow).join("");
-  $("cold").innerHTML=COLD.map(n=>`<tr data-row="${n}"><td>${n}</td>${[0,1].map(i=>coldCell(n,i)).join("")}</tr>`).join("");
-  $("fixbtn").textContent=editMode?"完成修正":"數量有誤？修正";
-  $("fixbtn").setAttribute("aria-pressed",editMode);
+  $("cold").innerHTML=COLD.map(n=>`<tr data-row="${n}"><td>${n}</td>${coldBaseCell(n)}${[0,1].map(i=>coldCell(n,i)).join("")}</tr>`).join("");
+  ["fixbtn","fixbtn2"].forEach(id=>{$(id).textContent=editMode?"完成修正":"數量有誤？修正";$(id).setAttribute("aria-pressed",editMode)});
   out();
 }
-$("fixbtn").onclick=()=>{editMode=!editMode;renderInv()};
+$("fixbtn").onclick=$("fixbtn2").onclick=()=>{editMode=!editMode;renderInv()};
 function refreshRow(n,skip){
   const tr=document.querySelector(`tr[data-row="${CSS.escape(n)}"]`);if(!tr)return;
   const tmp=document.createElement("tbody");tmp.innerHTML=juiceRow(n);
@@ -531,13 +536,16 @@ $("p-inv").addEventListener("input",e=>{
     else{const r=[...(state.juice[n]||[])];r[+f]=t.value;state.juice[n]=r}
     syncToday(n);refreshRow(n,t);
   }else{
-    const arr=[...(state.cold[n]||[])];arr[+t.dataset.i]=t.value;state.cold[n]=arr;
-    const row=t.closest("tr");row.children[1].querySelector(".prev").innerHTML=coldHint(n);
+    const row=t.closest("tr");
+    if(t.dataset.f==="base"){const a=adj();a.cbase=a.cbase||{};if(t.value==="")delete a.cbase[n];else a.cbase[n]=t.value;
+      const ps=((prev?.cold||{})[n]||[])[0];t.nextElementSibling.innerHTML=has(a.cbase[n])?`<span class="fix">已修正${has(ps)?"，原 "+ps:""}</span>`:""}
+    else{const arr=[...(state.cold[n]||[])];arr[+t.dataset.i]=t.value;state.cold[n]=arr}
+    row.children[2].querySelector(".prev").innerHTML=coldHint(n);
   }
   out();queueSave();
 });
 // 清空被修正的格子時，回到自動數字
-$("p-inv").addEventListener("change",e=>{const t=e.target;if(t.dataset.g==="juice"&&(t.dataset.f==="base"||t.dataset.f==="today")&&t.value===""){renderInv()}});
+$("p-inv").addEventListener("change",e=>{const t=e.target;if((t.dataset.g==="juice"&&(t.dataset.f==="base"||t.dataset.f==="today")||t.dataset.g==="cold"&&t.dataset.f==="base")&&t.value===""){renderInv()}});
 // 文字框自動長高，不用手動拉
 function autoGrow(t){if(!t)return;t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"}
 // 右上角「最後更新」：存在 adj.savedAt，網頁版和試算表版都適用
@@ -553,7 +561,7 @@ function out(){
   JUICE.forEach(n=>{const a=state.juice[n]||[];s+=`${n} ${f(a[0])}/${f(a[1])}/${f(a[2])}\n`});
   s+=`\n冷藏常溫（庫存/使用/進貨）\n`;
   // 使用 = 前一天庫存 + 今日進貨 − 今日庫存（自動算，沒有前一天資料時寫 -）
-  COLD.forEach(n=>{const a=state.cold[n]||[], pv=((prev?.cold||{})[n]||[])[0];
+  COLD.forEach(n=>{const a=state.cold[n]||[], pv=coldBase(n);
     const use=has(pv)&&has(a[0])?String(num(pv)+num(a[1])-num(a[0])):"-";
     s+=`${n} ${f(a[0])}/${use}/${f(a[1])}\n`});
   if((state.memo||"").trim())s+=`\n備註：${state.memo.trim()}\n`;
