@@ -116,6 +116,7 @@ textarea{resize:none;overflow:hidden}
 textarea.memo{min-height:84px;margin-top:0}
 .stwrap{display:grid;justify-items:end;text-align:right;line-height:1.35}
 .upd{font-size:12.5px;color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
+.btn.locked{background:var(--line);color:var(--muted)}
 .olist{list-style:none;padding:0;margin:8px 2px 0;font-size:13px;color:var(--muted);display:grid;gap:3px}
 .olist b{color:var(--fg)}
 .up{color:var(--accent)} .down{color:var(--warn)}
@@ -285,6 +286,8 @@ $("p-flow").addEventListener("change",e=>{
 function progress(){
   const all=FLOW.flatMap(g=>g.items).length, done=FLOW.flatMap(g=>g.items).filter(i=>state.checks[i[0]]).length;
   $("progtxt").textContent=`${done} / ${all} 完成`;$("meter").style.width=(done/all*100)+"%";
+  const locked=done<all;$("copy").classList.toggle("locked",locked);$("copy").textContent=locked?"🔒 複製盤點":"複製盤點";
+  if(!locked)hideWarn();
   document.querySelectorAll("[data-cnt]").forEach(el=>{
     const g=FLOW[+el.dataset.cnt], n=g.items.filter(i=>state.checks[i[0]]).length;
     el.textContent=`${n} / ${g.items.length}`;el.classList.toggle("full",n===g.items.length);
@@ -609,6 +612,15 @@ async function doCopy(){
 }
 function hideWarn(){$("warnbar").hidden=true}
 $("copy").onclick=()=>{
+  // 鎖定：每日檢查沒全部勾完不能複製
+  const undone=FLOW.flatMap(g=>g.items).filter(i=>!state.checks[i[0]]);
+  if(undone.length){
+    const wb=$("warnbar");
+    wb.innerHTML=`<p>🔒 每日檢查還有 ${undone.length} 項沒勾，完成後才能複製盤點</p><div class="row"><button type="button" class="ghost" id="goCheck">前往每日檢查</button></div>`;
+    wb.hidden=false;
+    $("goCheck").onclick=()=>{hideWarn();tab("flow");const el=$("c-"+undone[0][0]);if(el){el.scrollIntoView({block:"center",behavior:"smooth"})}};
+    return;
+  }
   const m=missingFields();
   if(!m.length)return doCopy();
   const wb=$("warnbar");
