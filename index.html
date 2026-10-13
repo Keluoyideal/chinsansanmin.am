@@ -325,6 +325,7 @@ const ORDER={
     ["糖桶",10,1,"傳佳","週一・Line群組，週三到",3,{max:6,use:0.808,lead:3}], // 最少叫 3 桶、店內最多放 6 桶
     ["燕麥奶",13,6,"燕麥奶廠商","週一 14:00 前匯款＋填表，週四到"],
     ["水梨",68,12,"總部","週一"],
+    ["蘋果",26,12,"總部","週一"], // 12 罐一箱；目標 = 日均 2.39 ×（8 + 安全 2.5）
     ["冬露",8,6,"總部","週一"]],
   // D. 鮮奶（光泉）：週日、二、四叫，隔天到。{星期: 到貨後目標}
   milk:{0:60,2:60,4:70}, milkMax:70,
@@ -334,7 +335,8 @@ const ORDER={
 // [日均用量, 到貨的星期(0=日)]；果汁用量取上面 ORDER.juice
 // 只看原汁和鮮奶，其他品項可以跟分店調貨
 const LOW={水梨:[7.094,[2]],鮮奶:[22,[1,3,5]]};
-["水蜜桃","甘蔗","柳丁","蘋果","椪柑","紅柚","檸檬"].forEach(n=>{LOW[n]=[0,[1,3]]});
+LOW.蘋果=[2.389,[2]];
+["水蜜桃","甘蔗","柳丁","椪柑","紅柚","檸檬"].forEach(n=>{LOW[n]=[0,[1,3]]});
 function stockOf(n){const v=(JUICE.includes(n)?state.juice[n]:state.cold[n]||[])?.[0];return has(v)?num(v):null}
 function orderPlan(){
   const dow=new Date($("date").value+"T00:00").getDay(), groups=[], warns=[];
@@ -343,10 +345,10 @@ function orderPlan(){
     // 目標庫存 = 日均用量 ×（要撐幾天 + 安全天數），無條件進位；其他日子顯示下一次叫貨的預估
     const cyc=ORDER.juiceCycles.find(c=>c.count===dow)||(dow>=1&&dow<=2?ORDER.juiceCycles[1]:ORDER.juiceCycles[0]);
     const allRows=Object.entries(ORDER.juice).map(([n,[u,safe]])=>{const t=Math.ceil(u*(cyc.cover+safe)-1e-9),s=stockOf(n);return{n,u,s,t,q:s===null?null:Math.max(0,t-s)}});
-    // 蘋果改成整箱叫（12 罐一箱），不算進鉦旺樂 20／25 的湊箱
-    const BOXED={蘋果:12};
-    allRows.forEach(r=>{const m=BOXED[r.n];if(m&&r.q>0)r.q=Math.ceil(r.q/m)*m});
-    const rows=allRows.filter(r=>!BOXED[r.n]), boxedRows=allRows.filter(r=>BOXED[r.n]);
+    // 蘋果改跟總部叫（跟水梨同通路），不在鉦旺樂這區；冷凍庫仍要算它的庫存
+    const OTHER={蘋果:1};
+    const rows=allRows.filter(r=>!OTHER[r.n]), boxedRows=allRows.filter(r=>OTHER[r.n]);
+    boxedRows.forEach(r=>{r.q=0});
     const boxUp=T=>{if(T<=0)return 0;return Math.min(Math.ceil(T/20)*20,Math.ceil(T/25)*25)};
     const boxDown=T=>Math.max(Math.floor(T/20)*20,Math.floor(T/25)*25,0);
     const boxName=t=>t%20===0?`${t/20} 個紙箱`:`${t/25} 個保麗龍箱`;
@@ -361,15 +363,13 @@ function orderPlan(){
     }
     // 冷凍庫上限：到貨當下 = 各果汁 max(0, 庫存 − 到貨前用量) ＋ 叫貨量，水梨一起算；超過就往下減到放得下
     let cut=0;
-    const boxedQ=boxedRows.reduce((a,r)=>a+(r.q||0),0);
-    if((tot>0||boxedQ>0)&&allRows.every(r=>r.s!==null)){
+    if(tot>0&&allRows.every(r=>r.s!==null)){
       const pear=stockOf("水梨")??0;
-      const pearQ=dow===0&&pear<68?Math.ceil((68-pear)/12)*12:0;
+      const apple=stockOf("蘋果")??0;
+      const pearQ=(dow===0&&pear<68?Math.ceil((68-pear)/12)*12:0)+(dow===0&&apple<26?Math.ceil((26-apple)/12)*12:0); // 總部的水梨、蘋果也進冷凍庫
       rows.forEach(r=>{r.a=Math.max(0,r.s-cyc.lead*r.u)});
       boxedRows.forEach(r=>{r.a=Math.max(0,r.s-cyc.lead*r.u)});
       let base=rows.reduce((a,r)=>a+r.a,0)+boxedRows.reduce((a,r)=>a+r.a,0)+Math.max(0,pear-cyc.lead*ORDER.pearUse)+pearQ;
-      // 先放整箱的蘋果；放不下就一箱一箱減
-      boxedRows.forEach(r=>{while(r.q>0&&base+r.q>ORDER.freezerMax)r.q-=BOXED[r.n];base+=r.q});
       if(base+tot>ORDER.freezerMax){
         const newTot=boxDown(ORDER.freezerMax-base);
         cut=tot-newTot;
@@ -382,12 +382,10 @@ function orderPlan(){
         if(newTot===0&&isFinite(base)&&base>ORDER.freezerMax)warns.push(`冷凍庫到貨時就已超過 ${ORDER.freezerMax} 瓶，果汁這次先不叫`);
       }
     }
-    const lines=allRows.filter(r=>r.q>0).map(r=>`${r.n} ${r.q}`);
-    const boxTxt=boxedRows.filter(r=>r.q>0).map(r=>`${r.n} ${r.q/BOXED[r.n]} 箱`).join("、");
-    if(tot)lines.push(`合計 ${tot} 瓶（${boxName(tot)}）${boxTxt?`＋${boxTxt}`:""}${cut?`，配合冷凍上限 ${ORDER.freezerMax} 少叫 ${cut} 瓶`:""}`);
-    else if(boxTxt)lines.push(`合計 ${boxTxt}`);
+    const lines=rows.filter(r=>r.q>0).map(r=>`${r.n} ${r.q}`);
+    if(tot)lines.push(`合計 ${tot} 瓶（${boxName(tot)}）${cut?`，配合冷凍上限 ${ORDER.freezerMax} 少叫 ${cut} 瓶`:""}`);
     else if(cut)lines.push(`配合冷凍上限 ${ORDER.freezerMax}，這次不叫`);
-    groups.push({title:"鉦旺樂",when:"",lines,missing:allRows.filter(r=>r.q===null).map(r=>r.n)});
+    groups.push({title:"鉦旺樂",when:"",lines,missing:rows.filter(r=>r.q===null).map(r=>r.n)});
   }
   if(dow===0){
     // 同一個廠商放一區
