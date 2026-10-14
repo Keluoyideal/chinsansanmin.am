@@ -226,14 +226,14 @@ let FLOW=[
   ["leaves","茶機、茶煮桶內無明顯茶葉"],
   ["teatop","茶機上方無灰塵，排氣孔沒有被遮蔽"],
   ["teareset","茶機數值已復歸"],
-  ["pots","茶桶、鍋具內外與鍋蓋無茶垢、茶渣、水漬"],
+  ["pots","茶桶、茶嘴、鍋具內外與鍋蓋無茶垢、茶渣、水漬"],
   ["boxes","茶葉、粉包置物盒無明顯茶葉髒污"],
-  ["filter","濾網乾淨無殘渣"],
-  ["stain","冰箱外觀、內部乾淨，無茶漬"],
+  ["filter","濾網、篩籃乾淨無殘渣","目視：無茶漬污垢、無破損"],
+  ["stain","冰箱外觀、內部乾淨，無茶漬","目視：門縫無污漬發霉、濾網無積灰、冰箱內沒有結霜"],
   ["doors","櫃門已擦拭、無髒污"],
   ["wipe","煮茶機、吧台檯面已擦拭，無水漬"],
   ["sink","水槽沒有茶垢","有需要就泡酵素處理"],
-  ["rack","層架上的器具已分類擺好"],
+  ["rack","層架上的器具已分類擺好","目視：層架無積灰、蟲屍、蜘蛛網"],
   ["rag","抹布、菜瓜布乾淨無破損","髒了或破了要換"]]},
  {h:"15:00 離峰檢查",t:"三、吧檯整理",items:[
   ["fifo","沒有過期的物料、果汁、飲品，並且先進先出","過期的要報廢，稽核會直接算嚴重違約"],
@@ -248,7 +248,7 @@ let FLOW=[
   ["dust","櫃檯、菜單無灰塵"],
   ["airdoor","空氣門無灰塵"],
   ["recycle","店內沒有放置回收垃圾"],
-  ["binlids","廢茶葉桶、瀝水桶、吧台和煮茶區的垃圾桶都有蓋上"],
+  ["binlids","廢茶葉桶、瀝水桶、吧台和煮茶區的垃圾桶都有蓋上","目視：桶身內外無明顯髒污、無破損"],
   ["cleaner","清潔用品放在專用位置並標示清楚","不能跟食材放在一起"],
   ["water","濾水軟水器時間正確，鹽桶有鹽、水位正常"],
   ["bird","鳥叫聲已開啟"]]},
@@ -259,8 +259,23 @@ let FLOW=[
 ];
 // 每週清潔：週六、週日、週一擇一天做；週六日可先做，週一前一定要完成（週一才算進必做）
 const WEEKLY_ITEMS=[
-  ["wk_fridge","冰箱濾網無積灰，門縫無污漬、無發霉，冰箱內沒有結霜","臥式和雙門冰箱都要看"],
-  ["wk_strainer","篩籃、大濾網已泡酵素並沖洗乾淨","無茶漬污垢，並確認沒有破損"]];
+  ["wk_ceiling","天花板沒有積灰、蜘蛛網、蟲屍，牆面沒有茶漬、污垢、剝落"],
+  ["wk_socket","插座周圍沒有茶漬、污垢"],
+  ["wk_bins","垃圾桶內外清洗，沒有污垢、破損"],
+  ["wk_panel","電箱內外沒有積灰、蟲屍"],
+  ["wk_track","內外軌道燈沒有積灰、蜘蛛網、蟲屍"],
+  ["wk_shelf","置物層架擦拭，沒有積灰、蟲屍、蜘蛛網"],
+  ["wk_fridge","冰箱濾網、門縫清潔","臥式和雙門冰箱都要做，清完確認無污漬、無發霉、無結霜"],
+  ["wk_cups","大、小量杯泡酵素清潔，沖洗乾淨"],
+  ["wk_lily","百合壺泡酵素清潔，沖洗乾淨","無茶漬污垢，並確認沒有破損"],
+  ["wk_strainer","篩籃、大濾網泡酵素清潔，沖洗乾淨","無茶漬污垢，並確認沒有破損"],
+  ["wk_teacup","煮茶機濾杯泡酵素清潔，沖洗乾淨","無茶漬污垢，並確認沒有破損"],
+  ["wk_spout","茶嘴、茶桶用食品用中性清潔劑清洗，沖洗乾淨","無茶漬污垢，並確認沒有破損"]];
+// 每月清潔：當月任一天做都可以，25 號起還沒做就變必做
+const MONTHLY_ITEMS=[
+  ["mo_sugar","糖機內部用溫水清洗，出糖口拆下浸泡刷洗","內部無污漬、水垢、紙屑；清完要重新校正糖機"],
+  ["mo_ice","製冰機內部用食品用中性清潔劑清洗，溝槽也要清","沖洗乾淨，無污垢"],
+  ["mo_ac","冷氣濾網、出風口、電扇清潔","無積灰，機身保持乾淨"]];
 // 週六當天一定要做
 const SAT_ITEMS=[["sat_water","軟硬水試劑已拍照，回傳總部專區"]];
 const BASE_FLOW=FLOW;
@@ -271,15 +286,20 @@ function buildFlow(){
   FLOW=BASE_FLOW.slice();
   if(w===6)FLOW.push({h:"每週清潔",t:"週六必做",items:SAT_ITEMS});
   if(w===6||w===0||w===1)FLOW.push({h:"每週清潔",t:"六、每週清潔（週六～週一擇一天）",items:WEEKLY_ITEMS,opt:w!==1});
+  const day=+$("date").value.slice(8,10);
+  FLOW.push({h:"每月清潔",t:"七、每月清潔（當月完成，25 號起必做）",items:MONTHLY_ITEMS,opt:day<25});
 }
 function requiredItems(){return FLOW.filter(g=>!g.opt).flatMap(g=>g.items)}
 // 週六／週日做過的，週一自動帶入
+function periodAnchor(k){return k.startsWith("mo_")?toKey($("date").value).slice(0,4):weekAnchor()}
 function applyWeekly(){
-  const w=dowNow();if(!(w===6||w===0||w===1))return;
-  const anc=weekAnchor(), a=adj();a.weeklyDone=a.weeklyDone||{};a.checkBy=a.checkBy||{};
+  const a=adj();a.weeklyDone=a.weeklyDone||{};a.checkBy=a.checkBy||{};
   const pw=(prev&&prev.adj&&prev.adj.weeklyDone)||{};
   Object.entries(pw).forEach(([k,v])=>{
-    if(v&&v.anchor===anc&&!a.weeklyDone[k]){a.weeklyDone[k]=v;state.checks[k]=true;a.checkBy[k]={by:v.by,at:"週"+"日一二三四五六"[new Date(fmtISO(v.date)+"T00:00").getDay()]}}
+    if(!v||v.anchor!==periodAnchor(k)||a.weeklyDone[k])return;
+    if(k.startsWith("wk_")&&![6,0,1].includes(dowNow()))return;
+    a.weeklyDone[k]=v;state.checks[k]=true;
+    a.checkBy[k]={by:v.by,at:k.startsWith("mo_")?`${+v.date.slice(2,4)}/${+v.date.slice(4,6)}`:"週"+"日一二三四五六"[new Date(fmtISO(v.date)+"T00:00").getDay()]};
   });
 }
 function fmtISO(k){return `20${k.slice(0,2)}-${k.slice(2,4)}-${k.slice(4,6)}`}
@@ -317,7 +337,7 @@ function renderFlow(){
 // 每一項是誰、幾點勾的（存在 adj.checkBy）
 function hm(){const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
 function markBy(k,on){const a=adj();a.checkBy=a.checkBy||{};if(on)a.checkBy[k]={by:state.filler,at:hm()};else delete a.checkBy[k];
-  if(k.startsWith("wk_")){a.weeklyDone=a.weeklyDone||{};if(on)a.weeklyDone[k]={anchor:weekAnchor(),date:toKey($("date").value),by:state.filler};else delete a.weeklyDone[k]}}
+  if(k.startsWith("wk_")||k.startsWith("mo_")){a.weeklyDone=a.weeklyDone||{};if(on)a.weeklyDone[k]={anchor:periodAnchor(k),date:toKey($("date").value),by:state.filler};else delete a.weeklyDone[k]}}
 function needFiller(){if(state.filler)return false;toast("請先選主要填表人，才能打勾");$("filler").focus();return true}
 // 整區完成／取消勾選
 $("p-flow").addEventListener("click",e=>{
@@ -712,7 +732,7 @@ function queueSave(){
   saveTimer=setTimeout(()=>{
     adj().savedAt=new Date().toISOString();showUpdated();
     const by=(state.adj&&state.adj.checkBy)||{};
-    const checkLog=BASE_FLOW.concat([{t:"週六必做",items:SAT_ITEMS},{t:"每週清潔",items:WEEKLY_ITEMS}]).flatMap(g=>g.items.map(i=>[g.t.replace(/^.、/,"")+"｜"+i[1],state.checks[i[0]]?`✓ ${(by[i[0]]||{}).by||""} ${(by[i[0]]||{}).at||""}`.trim():""]));
+    const checkLog=BASE_FLOW.concat([{t:"週六必做",items:SAT_ITEMS},{t:"每週清潔",items:WEEKLY_ITEMS},{t:"每月清潔",items:MONTHLY_ITEMS}]).flatMap(g=>g.items.map(i=>[g.t.replace(/^.、/,"")+"｜"+i[1],state.checks[i[0]]?`✓ ${(by[i[0]]||{}).by||""} ${(by[i[0]]||{}).at||""}`.trim():""]));
     const key=toKey($("date").value), body=JSON.stringify({...state,date:key,checkLog});
     saving=saving.then(()=>fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body}))
       .then(r=>r.json()).then(j=>{$("status").textContent=j.ok?"已儲存":"儲存失敗，稍後再試"})
