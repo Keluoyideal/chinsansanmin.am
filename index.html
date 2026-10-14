@@ -45,7 +45,7 @@ input,button{font:inherit;color:inherit}
 .f input,.f select{display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;max-width:100%;min-width:0;height:42px;font-size:15px;color:var(--fg);-webkit-appearance:none;appearance:none}
 .f input[type="date"]{text-align:left}
 .f input[type="date"]::-webkit-date-and-time-value{text-align:left}
-.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px}
 .tabs button{border:0;background:none;padding:8px;border-radius:7px;font-weight:700;color:var(--muted);cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
 section{margin-block:18px}
@@ -173,11 +173,13 @@ th{font-size:.72rem}
     </div>
     <div class="tabs" role="tablist">
       <button id="t-flow" role="tab" aria-selected="true">每日檢查</button>
+      <button id="t-period" role="tab" aria-selected="false">週／月清潔</button>
       <button id="t-inv" role="tab" aria-selected="false">物料盤點</button>
     </div>
   </header>
 
   <main id="p-flow"></main>
+  <main id="p-period" hidden></main>
   <main id="p-inv" hidden>
     <p class="note" style="margin-top:14px"><span class="nb">快用完或缺少的物料要和幹部確認；</span><span class="nb">當班沒有幹部請傳訊息至群組。</span></p>
     <div id="orderwarn"></div>
@@ -282,9 +284,9 @@ function buildFlow(){
   const w=dowNow();
   FLOW=BASE_FLOW.slice();
   if(w===6)FLOW.push({h:"每週清潔",t:"週六必做",items:SAT_ITEMS});
-  if(w===6||w===0||w===1)FLOW.push({h:"每週清潔",t:"六、每週清潔（週六～週一擇一天）",items:WEEKLY_ITEMS,opt:w!==1});
+  if(w===6||w===0||w===1)FLOW.push({h:"每週清潔",t:"週六～週一擇一天做，週一前完成",items:WEEKLY_ITEMS,opt:w!==1,period:true});
   const day=+$("date").value.slice(8,10);
-  FLOW.push({h:"每月清潔",t:"七、每月清潔（當月完成，25 號起必做）",items:MONTHLY_ITEMS,opt:day<25});
+  FLOW.push({h:"每月清潔",t:"當月內完成，25 號起必做",items:MONTHLY_ITEMS,opt:day<25,period:true});
 }
 function requiredItems(){return FLOW.filter(g=>!g.opt).flatMap(g=>g.items)}
 // 週六／週日做過的，週一自動帶入
@@ -314,10 +316,11 @@ let state=blank(), prev=null, saveTimer=null, saving=Promise.resolve();
 function blank(){return{filler:"",helpers:"",memo:"",checks:{},juice:{},cold:{},adj:{base:{},today:{}}}}
 
 // ---------- render flow ----------
+function onFlow(ev,fn){["p-flow","p-period"].forEach(id=>$(id).addEventListener(ev,fn))}
 function renderFlow(){
   buildFlow();
-  let html=`<p class="note" style="margin-top:14px">若遇督導檢查有缺失，責任共同承擔，請互相提醒。</p>`,lastH="";
-  FLOW.forEach(g=>{
+  // 每日檢查一個分頁；每週、每月清潔另一個分頁
+  const part=list=>{let html="",lastH="";list.forEach(g=>{
     if(g.h!==lastH){if(lastH)html+="</section>";html+=`<section><h2>${g.h}</h2>`;lastH=g.h}
     html+=`<h3 class="gh">${g.t}<span class="ghr"><span class="cnt" data-cnt="${FLOW.indexOf(g)}"></span><button type="button" class="ghost all" data-all="${FLOW.indexOf(g)}"></button></span></h3><div class="group" style="margin-bottom:16px">`;
     g.items.forEach(([id,a,b])=>{
@@ -326,9 +329,10 @@ function renderFlow(){
       html+=`<label class="item${on?" done":""}"><input type="checkbox" id="c-${id}" data-k="${id}"${on?" checked":""}><span>${a}${b?`<small>${b}</small>`:""}</span><em class="who">${on&&cb?esc(cb.by+" "+cb.at):""}</em></label>`;
     });
     html+="</div>";
-  });
-  html+=`</section>`;
-  $("p-flow").innerHTML=html;
+  });return html+(lastH?"</section>":"")};
+  $("p-flow").innerHTML=`<p class="note" style="margin-top:14px">若遇督導檢查有缺失，責任共同承擔，請互相提醒。</p>`+part(FLOW.filter(g=>!g.period));
+  const w=dowNow();
+  $("p-period").innerHTML=(FLOW.some(g=>g.h==="每週清潔")?"":`<section><h2>每週清潔</h2><p class="note" style="margin-top:8px">每週清潔在週六、週日、週一出現，三天內擇一天做完，週一前一定要完成。</p></section>`)+part(FLOW.filter(g=>g.period));
   progress();
 }
 // 每一項是誰、幾點勾的（存在 adj.checkBy）
@@ -337,14 +341,14 @@ function markBy(k,on){const a=adj();a.checkBy=a.checkBy||{};if(on)a.checkBy[k]={
   if(k.startsWith("wk_")||k.startsWith("mo_")){a.weeklyDone=a.weeklyDone||{};if(on)a.weeklyDone[k]={anchor:periodAnchor(k),date:toKey($("date").value),by:state.filler};else delete a.weeklyDone[k]}}
 function needFiller(){if(state.filler)return false;toast("請先選主要填表人，才能打勾");$("filler").focus();return true}
 // 整區完成／取消勾選
-$("p-flow").addEventListener("click",e=>{
+onFlow("click",e=>{
   const b=e.target.closest("[data-all]");if(!b)return;
   if(needFiller())return;
   const g=FLOW[+b.dataset.all], full=g.items.every(i=>state.checks[i[0]]);
   g.items.forEach(i=>{if(!!state.checks[i[0]]!==!full)markBy(i[0],!full);state.checks[i[0]]=!full});
   renderFlow();out();queueSave();
 });
-$("p-flow").addEventListener("change",e=>{
+onFlow("change",e=>{
   const k=e.target.dataset.k;if(!k)return;
   if(needFiller()){e.target.checked=!e.target.checked;return}
   state.checks[k]=e.target.checked;markBy(k,e.target.checked);
@@ -652,12 +656,12 @@ function out(){
 
 // ---------- tabs / header ----------
 function tab(which){
-  const inv=which==="inv";$("p-flow").hidden=inv;$("p-inv").hidden=!inv;
+  const inv=which==="inv";
+  ["flow","period","inv"].forEach(t=>{$("p-"+t).hidden=t!==which;$("t-"+t).setAttribute("aria-selected",t===which)});
   if(inv)requestAnimationFrame(()=>autoGrow($("memo")));
-  $("t-flow").setAttribute("aria-selected",!inv);$("t-inv").setAttribute("aria-selected",inv);
   try{localStorage.setItem("tab",which)}catch(e){}
 }
-$("t-flow").onclick=()=>tab("flow");$("t-inv").onclick=()=>tab("inv");
+$("t-flow").onclick=()=>tab("flow");$("t-period").onclick=()=>tab("period");$("t-inv").onclick=()=>tab("inv");
 // 主要填表人（單選）＋共同填表人（可多選）
 function fillerList(v){return String(v||"").split(/[、,，\s]+/).filter(Boolean)}
 function chipHTML(names,pick,disabled){return names.map(n=>`<button type="button" class="chip" data-n="${esc(n)}" aria-pressed="${pick.includes(n)}"${disabled.includes(n)?" disabled":""}>${esc(n)}</button>`).join("")}
@@ -702,9 +706,9 @@ $("copy").onclick=()=>{
   const undone=requiredItems().filter(i=>!state.checks[i[0]]);
   if(undone.length){
     const wb=$("warnbar");
-    wb.innerHTML=`<p>🔒 每日檢查還有 ${undone.length} 項沒勾，完成後才能複製盤點</p><div class="row"><button type="button" class="ghost" id="goCheck">前往每日檢查</button></div>`;
+    wb.innerHTML=`<p>🔒 檢查還有 ${undone.length} 項沒勾，完成後才能複製盤點</p><div class="row"><button type="button" class="ghost" id="goCheck">前往檢查</button></div>`;
     wb.hidden=false;
-    $("goCheck").onclick=()=>{hideWarn();tab("flow");const el=$("c-"+undone[0][0]);if(el){el.scrollIntoView({block:"center",behavior:"smooth"})}};
+    $("goCheck").onclick=()=>{hideWarn();tab(FLOW.some(g=>g.period&&g.items.includes(undone[0]))?"period":"flow");const el=$("c-"+undone[0][0]);if(el){el.scrollIntoView({block:"center",behavior:"smooth"})}};
     return;
   }
   const m=missingFields();
@@ -782,7 +786,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll()});
 
 // ---------- boot ----------
 $("date").value=todayStr();
-try{if(localStorage.getItem("tab")==="inv")tab("inv")}catch(e){}
+try{const t=localStorage.getItem("tab");if(t==="inv"||t==="period")tab(t)}catch(e){}
 loadDay();
 </script>
 </body>
