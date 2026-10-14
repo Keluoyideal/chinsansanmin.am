@@ -216,7 +216,7 @@ th{font-size:.72rem}
 <div class="warnbar" id="warnbar" role="alert" hidden></div>
 
 <script>
-const FLOW=[
+let FLOW=[
  {h:"15:00 離峰檢查",t:"一、紀錄填寫",items:[
   ["temp","冰箱溫度表已填寫並簽名","冷藏 0–7℃、冷凍 −18℃ 以下"],
   ["icebox","保冰盒溫度紀錄表已填寫"],
@@ -257,6 +257,30 @@ const FLOW=[
   ["staff","員工物品皆放在員工專區","櫃檯、飲料吧台不能放員工物品，手機也要放員工專區"],
   ["shelf","架子和客人看得到的地方，沒有抹布、手機等個人物品"]]}
 ];
+// 每週清潔：週六、週日、週一擇一天做；週六日可先做，週一前一定要完成（週一才算進必做）
+const WEEKLY_ITEMS=[
+  ["wk_fridge","冰箱濾網無積灰，門縫無污漬、無發霉，冰箱內沒有結霜","臥式和雙門冰箱都要看"],
+  ["wk_strainer","篩籃、大濾網已泡酵素並沖洗乾淨","無茶漬污垢，並確認沒有破損"]];
+const BASE_FLOW=FLOW;
+function dowNow(){return new Date($("date").value+"T00:00").getDay()}
+function weekAnchor(){const d=new Date($("date").value+"T00:00"),w=d.getDay();d.setDate(d.getDate()-(w===6?0:w===0?1:2));return `${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`}
+function buildFlow(){
+  const w=dowNow();
+  FLOW=BASE_FLOW.slice();
+  if(w===6||w===0||w===1)FLOW.push({h:"每週清潔",t:"六、每週清潔（週六～週一擇一天）",items:WEEKLY_ITEMS,opt:w!==1});
+}
+function requiredItems(){return FLOW.filter(g=>!g.opt).flatMap(g=>g.items)}
+// 週六／週日做過的，週一自動帶入
+function applyWeekly(){
+  const w=dowNow();if(!(w===6||w===0||w===1))return;
+  const anc=weekAnchor(), a=adj();a.weeklyDone=a.weeklyDone||{};a.checkBy=a.checkBy||{};
+  const pw=(prev&&prev.adj&&prev.adj.weeklyDone)||{};
+  Object.entries(pw).forEach(([k,v])=>{
+    if(v&&v.anchor===anc&&!a.weeklyDone[k]){a.weeklyDone[k]=v;state.checks[k]=true;a.checkBy[k]={by:v.by,at:"週"+"日一二三四五六"[new Date(fmtISO(v.date)+"T00:00").getDay()]}}
+  });
+}
+function fmtISO(k){return `20${k.slice(0,2)}-${k.slice(2,4)}-${k.slice(4,6)}`}
+
 const STAFF=["力瑜","予諠","Jessie","Vicky","晨蕊","以馨","小唐","田祈","ㄍㄨㄣ","微媛","小潔","庭瑋"];
 // 順序：水梨、蘋果，其他照熱銷程度（日均用量）排
 const JUICE=["水梨","蘋果","水蜜桃","甘蔗","柳丁","椪柑","紅柚","檸檬"];
@@ -271,6 +295,7 @@ function blank(){return{filler:"",helpers:"",memo:"",checks:{},juice:{},cold:{},
 
 // ---------- render flow ----------
 function renderFlow(){
+  buildFlow();
   let html=`<p class="note" style="margin-top:14px">若遇督導檢查有缺失，責任共同承擔，請互相提醒。</p>`,lastH="";
   FLOW.forEach(g=>{
     if(g.h!==lastH){if(lastH)html+="</section>";html+=`<section><h2>${g.h}</h2>`;lastH=g.h}
@@ -288,7 +313,8 @@ function renderFlow(){
 }
 // 每一項是誰、幾點勾的（存在 adj.checkBy）
 function hm(){const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
-function markBy(k,on){const a=adj();a.checkBy=a.checkBy||{};if(on)a.checkBy[k]={by:state.filler,at:hm()};else delete a.checkBy[k]}
+function markBy(k,on){const a=adj();a.checkBy=a.checkBy||{};if(on)a.checkBy[k]={by:state.filler,at:hm()};else delete a.checkBy[k];
+  if(k.startsWith("wk_")){a.weeklyDone=a.weeklyDone||{};if(on)a.weeklyDone[k]={anchor:weekAnchor(),date:toKey($("date").value),by:state.filler};else delete a.weeklyDone[k]}}
 function needFiller(){if(state.filler)return false;toast("請先選主要填表人，才能打勾");$("filler").focus();return true}
 // 整區完成／取消勾選
 $("p-flow").addEventListener("click",e=>{
@@ -307,7 +333,7 @@ $("p-flow").addEventListener("change",e=>{
   progress();out();queueSave();
 });
 function progress(){
-  const all=FLOW.flatMap(g=>g.items).length, done=FLOW.flatMap(g=>g.items).filter(i=>state.checks[i[0]]).length;
+  const req=requiredItems(), all=req.length, done=req.filter(i=>state.checks[i[0]]).length;
   $("progtxt").textContent=`${done} / ${all} 完成`;$("meter").style.width=(done/all*100)+"%";
   const locked=done<all;$("copy").classList.toggle("locked",locked);$("copy").textContent=locked?"🔒 複製盤點":"複製盤點";
   if(!locked)hideWarn();
@@ -597,7 +623,7 @@ function out(){
     s+=`${n} ${f(a[0])}/${use}/${f(a[1])}\n`});
   if((state.memo||"").trim())s+=`\n備註：${state.memo.trim()}\n`;
   // 檢查表沒勾完的項目附在最後
-  const all=FLOW.flatMap(g=>g.items), undone=all.filter(i=>!state.checks[i[0]]).map(i=>i[1]);
+  const all=requiredItems(), undone=all.filter(i=>!state.checks[i[0]]).map(i=>i[1]);
   const chk=undone.length?`離峰檢查 ${all.length-undone.length}/${all.length}，未完成：\n${undone.map(x=>"⚠️ "+x).join("\n")}`:`離峰檢查 ${all.length}/${all.length} 全部完成 ✅`;
   s=s.replace("\n\n1.原汁",`\n\n${chk}\n\n1.原汁`);
   const plan=orderPlan();renderOrder(plan);
@@ -653,7 +679,7 @@ async function doCopy(){
 function hideWarn(){$("warnbar").hidden=true}
 $("copy").onclick=()=>{
   // 鎖定：每日檢查沒全部勾完不能複製
-  const undone=FLOW.flatMap(g=>g.items).filter(i=>!state.checks[i[0]]);
+  const undone=requiredItems().filter(i=>!state.checks[i[0]]);
   if(undone.length){
     const wb=$("warnbar");
     wb.innerHTML=`<p>🔒 每日檢查還有 ${undone.length} 項沒勾，完成後才能複製盤點</p><div class="row"><button type="button" class="ghost" id="goCheck">前往每日檢查</button></div>`;
@@ -683,7 +709,7 @@ function queueSave(){
   saveTimer=setTimeout(()=>{
     adj().savedAt=new Date().toISOString();showUpdated();
     const by=(state.adj&&state.adj.checkBy)||{};
-    const checkLog=FLOW.flatMap(g=>g.items.map(i=>[g.t.replace(/^.、/,"")+"｜"+i[1],state.checks[i[0]]?`✓ ${(by[i[0]]||{}).by||""} ${(by[i[0]]||{}).at||""}`.trim():""]));
+    const checkLog=BASE_FLOW.concat([{t:"每週清潔",items:WEEKLY_ITEMS}]).flatMap(g=>g.items.map(i=>[g.t.replace(/^.、/,"")+"｜"+i[1],state.checks[i[0]]?`✓ ${(by[i[0]]||{}).by||""} ${(by[i[0]]||{}).at||""}`.trim():""]));
     const key=toKey($("date").value), body=JSON.stringify({...state,date:key,checkLog});
     saving=saving.then(()=>fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body}))
       .then(r=>r.json()).then(j=>{$("status").textContent=j.ok?"已儲存":"儲存失敗，稍後再試"})
@@ -702,7 +728,7 @@ async function loadDay(){
     prev=j.prev||null;
     const d=j.day;
     if(d){state={filler:d.filler||"",helpers:d.helpers||"",memo:d.memo||"",checks:d.checks||{},juice:d.juice||{},cold:d.cold||{},adj:d.adj||{}};setFiller()}
-    renderFlow();renderInv();
+    applyWeekly();renderFlow();renderInv();
     $("status").textContent=prev?`對照 ${fmtKey(prev.date)} 的盤點`:"尚無前一天盤點";
   }catch(e){$("status").textContent="讀取失敗，請重新整理"}
 }
