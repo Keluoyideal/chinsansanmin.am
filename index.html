@@ -280,7 +280,9 @@ const WEEKLY_ITEMS=[
 const MONTHLY_ITEMS=[
   ["mo_sugar","糖機內部用溫水清洗，出糖口拆下浸泡刷洗","內部無污漬、水垢、紙屑；清完要重新校正糖機"],
   ["mo_ice","製冰機內部用食品用中性清潔劑清洗，溝槽也要清","沖洗乾淨無污垢，並填寫製冰機清潔紀錄表"],
-  ["mo_ac","冷氣濾網、出風口、電扇清潔","無積灰，機身保持乾淨"]];
+  ["mo_ac","冷氣濾網、出風口、電扇清潔","無積灰，機身保持乾淨"],
+  ["mo_filter","濾心更換紀錄表已確認","有換濾心要填上更換日期"],
+  ["mo_pest","蟲害防治已完成並填寫紀錄表","廠商收據要留存"]];
 // 週六當天一定要做
 const SAT_ITEMS=[["sat_water","軟水機、軟水測試結果已拍照，回傳總部專區","兩張都要拍"]];
 const BASE_FLOW=FLOW;
@@ -754,7 +756,12 @@ function queueSave(){
     adj().savedAt=new Date().toISOString();showUpdated();
     const by=(state.adj&&state.adj.checkBy)||{};
     const checkLog=BASE_FLOW.concat([{t:"週六必做",items:SAT_ITEMS},{t:"每週清潔",items:WEEKLY_ITEMS},{t:"每月清潔",items:MONTHLY_ITEMS}]).flatMap(g=>g.items.map(i=>[g.t.replace(/^.、/,"")+"｜"+i[1],state.checks[i[0]]?`✓ ${(by[i[0]]||{}).by||""} ${(by[i[0]]||{}).at||""}`.trim():""]));
-    const key=toKey($("date").value), body=JSON.stringify({...state,date:key,checkLog});
+    // 週／月清潔當天做的，另外寫進「清潔紀錄」（執行日期、項目、執行人員）
+    const today=toKey($("date").value), wd=(state.adj&&state.adj.weeklyDone)||{};
+    const periodLog=WEEKLY_ITEMS.map(i=>["每週",i]).concat(MONTHLY_ITEMS.map(i=>["每月",i]))
+      .filter(([f,i])=>wd[i[0]]&&wd[i[0]].date===today&&state.checks[i[0]])
+      .map(([f,i])=>[f,i[1],wd[i[0]].by||"",(by[i[0]]||{}).at||""]);
+    const key=today, body=JSON.stringify({...state,date:key,checkLog,periodLog});
     saving=saving.then(()=>fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body}))
       .then(r=>r.json()).then(j=>{$("status").textContent=j.ok?"已儲存":"儲存失敗，稍後再試"})
       .catch(()=>{$("status").textContent="儲存失敗，請檢查網路"});

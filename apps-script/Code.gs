@@ -33,6 +33,16 @@ function doPost(e) {
                  JSON.stringify(body.adj || {}), body.helpers || "", body.memo || ""];
     upsert_(dataSheet_(), date, row);
     upsert_(reportSheet_(), date, reportRow_(body, now));
+    // 清潔紀錄：週／月清潔一項一列（對應紙本「每周/月清潔檢核表」的執行日期、執行人員）
+    if (Array.isArray(body.periodLog)) {
+      const sh = sheet_("清潔紀錄", ["執行日期","頻率","項目","執行人員","時間"]);
+      const n = sh.getLastRow();
+      if (n > 1) {
+        const ds = sh.getRange(2, 1, n - 1, 1).getDisplayValues();
+        for (let i = ds.length - 1; i >= 0; i--) if (ds[i][0] === date) sh.deleteRow(i + 2);
+      }
+      body.periodLog.forEach(x => sh.appendRow([date].concat(x)));
+    }
     // 每日檢核：一天一列，每一項寫「✓ 填表人 時間」，沒勾留空
     if (Array.isArray(body.checkLog)) {
       const labels = body.checkLog.map(x => x[0]);
