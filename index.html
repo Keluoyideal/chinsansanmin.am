@@ -117,6 +117,7 @@ textarea.memo{min-height:84px;margin-top:0}
 .stwrap{display:grid;justify-items:end;text-align:right;line-height:1.35}
 .upd{font-size:12.5px;color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
 .btn.locked{background:var(--line);color:var(--muted)}
+.item .who{margin-left:auto;flex:none;font-style:normal;font-size:.72rem;color:var(--muted);white-space:nowrap;padding-top:3px}
 .olist{list-style:none;padding:0;margin:8px 2px 0;font-size:13px;color:var(--muted);display:grid;gap:3px}
 .olist b{color:var(--fg)}
 .up{color:var(--accent)} .down{color:var(--warn)}
@@ -276,7 +277,8 @@ function renderFlow(){
     html+=`<h3 class="gh">${g.t}<span class="ghr"><span class="cnt" data-cnt="${FLOW.indexOf(g)}"></span><button type="button" class="ghost all" data-all="${FLOW.indexOf(g)}"></button></span></h3><div class="group" style="margin-bottom:16px">`;
     g.items.forEach(([id,a,b])=>{
       const on=!!state.checks[id];
-      html+=`<label class="item${on?" done":""}"><input type="checkbox" id="c-${id}" data-k="${id}"${on?" checked":""}><span>${a}${b?`<small>${b}</small>`:""}</span></label>`;
+      const cb=(state.adj&&state.adj.checkBy||{})[id];
+      html+=`<label class="item${on?" done":""}"><input type="checkbox" id="c-${id}" data-k="${id}"${on?" checked":""}><span>${a}${b?`<small>${b}</small>`:""}</span><em class="who">${on&&cb?esc(cb.by+" "+cb.at):""}</em></label>`;
     });
     html+="</div>";
   });
@@ -284,16 +286,23 @@ function renderFlow(){
   $("p-flow").innerHTML=html;
   progress();
 }
+// 每一項是誰、幾點勾的（存在 adj.checkBy）
+function hm(){const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
+function markBy(k,on){const a=adj();a.checkBy=a.checkBy||{};if(on)a.checkBy[k]={by:state.filler,at:hm()};else delete a.checkBy[k]}
+function needFiller(){if(state.filler)return false;toast("請先選主要填表人，才能打勾");$("filler").focus();return true}
 // 整區完成／取消勾選
 $("p-flow").addEventListener("click",e=>{
   const b=e.target.closest("[data-all]");if(!b)return;
+  if(needFiller())return;
   const g=FLOW[+b.dataset.all], full=g.items.every(i=>state.checks[i[0]]);
-  g.items.forEach(i=>{state.checks[i[0]]=!full});
+  g.items.forEach(i=>{if(!!state.checks[i[0]]!==!full)markBy(i[0],!full);state.checks[i[0]]=!full});
   renderFlow();out();queueSave();
 });
 $("p-flow").addEventListener("change",e=>{
   const k=e.target.dataset.k;if(!k)return;
-  state.checks[k]=e.target.checked;
+  if(needFiller()){e.target.checked=!e.target.checked;return}
+  state.checks[k]=e.target.checked;markBy(k,e.target.checked);
+  const w=e.target.closest(".item").querySelector(".who");if(w)w.textContent=e.target.checked?`${state.filler} ${hm()}`:"";
   e.target.closest(".item").classList.toggle("done",e.target.checked);
   progress();out();queueSave();
 });
@@ -673,7 +682,9 @@ function queueSave(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     adj().savedAt=new Date().toISOString();showUpdated();
-    const key=toKey($("date").value), body=JSON.stringify({...state,date:key});
+    const by=(state.adj&&state.adj.checkBy)||{};
+    const checkLog=FLOW.flatMap(g=>g.items.map(i=>[g.t.replace(/^.、/,"")+"｜"+i[1],state.checks[i[0]]?`✓ ${(by[i[0]]||{}).by||""} ${(by[i[0]]||{}).at||""}`.trim():""]));
+    const key=toKey($("date").value), body=JSON.stringify({...state,date:key,checkLog});
     saving=saving.then(()=>fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body}))
       .then(r=>r.json()).then(j=>{$("status").textContent=j.ok?"已儲存":"儲存失敗，稍後再試"})
       .catch(()=>{$("status").textContent="儲存失敗，請檢查網路"});

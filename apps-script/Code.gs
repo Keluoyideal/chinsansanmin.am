@@ -33,6 +33,14 @@ function doPost(e) {
                  JSON.stringify(body.adj || {}), body.helpers || "", body.memo || ""];
     upsert_(dataSheet_(), date, row);
     upsert_(reportSheet_(), date, reportRow_(body, now));
+    // 每日檢核：一天一列，每一項寫「✓ 填表人 時間」，沒勾留空
+    if (Array.isArray(body.checkLog)) {
+      const labels = body.checkLog.map(x => x[0]);
+      const sh = sheet_("每日檢核", ["日期","主要填表人","共同填表人","完成"].concat(labels));
+      sh.getRange(1, 1, 1, 4 + labels.length).setValues([["日期","主要填表人","共同填表人","完成"].concat(labels)]);
+      const done = body.checkLog.filter(x => x[1]).length;
+      upsert_(sh, date, [date, body.filler || "", body.helpers || "", done + "/" + labels.length].concat(body.checkLog.map(x => x[1])));
+    }
     // 每次修改都留一筆，填錯時可以查回原本的數字
     logSheet_().appendRow([now, date, body.filler || "", row[3], row[4]]);
     return json_({ ok: true });
