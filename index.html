@@ -279,10 +279,10 @@ const WEEKLY_ITEMS=[
 // 每月清潔：當月任一天做都可以，25 號起還沒做就變必做
 const MONTHLY_ITEMS=[
   ["mo_sugar","糖機內部用溫水清洗，出糖口拆下浸泡刷洗","內部無污漬、水垢、紙屑；清完要重新校正糖機"],
-  ["mo_ice","製冰機內部用食品用中性清潔劑清洗，溝槽也要清","沖洗乾淨，無污垢"],
+  ["mo_ice","製冰機內部用食品用中性清潔劑清洗，溝槽也要清","沖洗乾淨無污垢，並填寫製冰機清潔紀錄表"],
   ["mo_ac","冷氣濾網、出風口、電扇清潔","無積灰，機身保持乾淨"]];
 // 週六當天一定要做
-const SAT_ITEMS=[["sat_water","軟硬水試劑已拍照，回傳總部專區"]];
+const SAT_ITEMS=[["sat_water","軟水機、軟水測試結果已拍照，回傳總部專區","兩張都要拍"]];
 const BASE_FLOW=FLOW;
 function dowNow(){return new Date($("date").value+"T00:00").getDay()}
 function weekAnchor(){const d=new Date($("date").value+"T00:00"),w=d.getDay();d.setDate(d.getDate()-(w===6?0:w===0?1:2));return `${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`}
