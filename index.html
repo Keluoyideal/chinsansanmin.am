@@ -118,6 +118,8 @@ textarea.memo{min-height:84px;margin-top:0}
 .upd{font-size:12.5px;color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
 .btn.locked{background:var(--line);color:var(--muted)}
 .item .who{margin-left:auto;flex:none;font-style:normal;font-size:.72rem;color:var(--muted);white-space:nowrap;padding-top:3px}
+.icebar{position:fixed;left:16px;right:16px;top:calc(8px + env(safe-area-inset-top,0px));z-index:9;max-width:528px;margin:0 auto;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:12px;padding:10px 12px;font-weight:700;font-size:.95rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.icebar .ghost{font-size:.8rem;padding:3px 10px}
 .olist{list-style:none;padding:0;margin:8px 2px 0;font-size:13px;color:var(--muted);display:grid;gap:3px}
 .olist b{color:var(--fg)}
 .up{color:var(--accent)} .down{color:var(--warn)}
@@ -215,10 +217,14 @@ th{font-size:.72rem}
   <button class="btn" id="copy">複製盤點</button>
 </div></div>
 <div class="toast" id="toast" hidden></div>
+<div class="icebar" id="icebar" role="alert" hidden></div>
 <div class="warnbar" id="warnbar" role="alert" hidden></div>
 
 <script>
 let FLOW=[
+ {h:"補冰塊",t:"冰槽冰塊補滿（打勾＝已補）",items:[
+  ["ice11","11:00 補冰塊"],
+  ["ice14","14:00 補冰塊"]]},
  {h:"15:00 離峰檢查",t:"一、紀錄填寫",items:[
   ["temp","冰箱溫度表已填寫並簽名","冷藏 0–7℃、冷凍 −18℃ 以下"],
   ["icebox","保冰盒溫度紀錄表已填寫"],
@@ -317,6 +323,20 @@ function blank(){return{filler:"",helpers:"",memo:"",checks:{},juice:{},cold:{},
 
 // ---------- render flow ----------
 function onFlow(ev,fn){["p-flow","p-period"].forEach(id=>$(id).addEventListener(ev,fn))}
+// 補冰塊提醒：網頁開著時，到 11:00、14:00 還沒勾就跳提醒（有開通知的話也會發通知）
+const ICE_TIMES=[["ice11",11],["ice14",14]];
+function iceDue(){const now=new Date(), today=$("date").value===todayStr();
+  return today?ICE_TIMES.filter(([k,h])=>now.getHours()>=h&&!state.checks[k]):[]}
+function iceCheck(){
+  const due=iceDue(), el=$("icebar");if(!el)return;
+  el.hidden=!due.length;
+  if(due.length)el.innerHTML=`⏰ ${due.map(([k,h])=>h+":00").join("、")} 該補冰塊了 <button type="button" class="ghost" id="iceGo">去打勾</button>`+(("Notification" in window)&&Notification.permission==="default"?` <button type="button" class="ghost" id="iceNotif">開啟通知</button>`:"");
+  const g=$("iceGo");if(g)g.onclick=()=>{tab("flow");const c=$("c-"+due[0][0]);if(c)c.scrollIntoView({block:"center",behavior:"smooth"})};
+  const n=$("iceNotif");if(n)n.onclick=()=>{try{Notification.requestPermission().then(iceCheck)}catch(e){}};
+  due.forEach(([k,h])=>{const key="icenote-"+toKey($("date").value)+"-"+k;
+    try{if(Notification.permission==="granted"&&!localStorage.getItem(key)){new Notification("補冰塊提醒",{body:`${h}:00 該補冰塊了，補完記得打勾`,icon:"icon-192.png"});localStorage.setItem(key,"1")}}catch(e){}});
+}
+setInterval(iceCheck,60000);
 function renderFlow(){
   buildFlow();
   // 每日檢查一個分頁；每週、每月清潔另一個分頁
@@ -333,7 +353,7 @@ function renderFlow(){
   $("p-flow").innerHTML=`<p class="note" style="margin-top:14px">若遇督導檢查有缺失，責任共同承擔，請互相提醒。</p>`+part(FLOW.filter(g=>!g.period));
   const w=dowNow();
   $("p-period").innerHTML=(FLOW.some(g=>g.h==="每週清潔")?"":`<section><h2>每週清潔</h2><p class="note" style="margin-top:8px">每週清潔在週六、週日、週一出現，三天內擇一天做完，週一前一定要完成。</p></section>`)+part(FLOW.filter(g=>g.period));
-  progress();
+  progress();iceCheck();
 }
 // 每一項是誰、幾點勾的（存在 adj.checkBy）
 function hm(){const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
@@ -351,7 +371,7 @@ onFlow("click",e=>{
 onFlow("change",e=>{
   const k=e.target.dataset.k;if(!k)return;
   if(needFiller()){e.target.checked=!e.target.checked;return}
-  state.checks[k]=e.target.checked;markBy(k,e.target.checked);
+  state.checks[k]=e.target.checked;markBy(k,e.target.checked);iceCheck();
   const w=e.target.closest(".item").querySelector(".who");if(w)w.textContent=e.target.checked?`${state.filler} ${hm()}`:"";
   e.target.closest(".item").classList.toggle("done",e.target.checked);
   progress();out();queueSave();
